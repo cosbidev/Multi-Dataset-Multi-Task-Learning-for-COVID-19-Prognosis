@@ -60,6 +60,7 @@ def main():
     parser.add_argument("--output_dir", help="output directory path", default="data/processed", required=True)
     parser.add_argument("--input_data", help="input directory path for data", default="data/processed", required=True)
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
+    parser.add_argument("--id_exp", help="seed", default=1)
     args = parser.parse_args()
 
     with open(args.cfg_file) as file:
@@ -95,14 +96,30 @@ def main():
     device = torch.device(cfg['device']['cuda_device'] if torch.cuda.is_available() else "cpu")
     num_workers = 0 if device.type == "cpu" else cfg['device']['gpu_num_workers']
     print(device)
-
+    # Directories
+    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}'
+    cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
+    cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
     # Files and Directories
+    assert model_name in [
+              "vgg11",
+              "vgg11_bn",
+              "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
+              "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
+              "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
+              "shufflenet_v2_x1_0", "mobilenet_v2", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
     model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name) # folder to save model
+    print(' ----------| Model directory: ', model_dir)
+
+
     mkdir(model_dir)
     report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name) # folder to save results
+    print(' ----------| Report directory: ', report_dir)
+
     mkdir(report_dir)
-    report_file = os.path.join(report_dir, 'report.xlsx')
+
     plot_training_dir = os.path.join(report_dir, "training_plot")
+
     mkdir(plot_training_dir)
     plot_test_dir = os.path.join(report_dir, "test_plot")
     mkdir(plot_test_dir)
@@ -139,7 +156,6 @@ def main():
 
         # Data Loaders for MORBIDITY TASK
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
-        fold_data['train'] = fold_data['train'][:40]
         datasets = {step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for step in steps}
 
         data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
@@ -179,6 +195,10 @@ def main():
         # Evaluate the model on all the test data
         results, acc = evaluate(model, data_loaders['test'], criterion, idx_to_class, device, topk=(1, ))
         # Test model
+
+
+
+
         print(results)
         print(acc)
 

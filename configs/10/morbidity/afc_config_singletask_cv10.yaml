@@ -8,8 +8,8 @@ device:
 data:
   cv: 10
   fold_dir: data/processed/AFC/10 # folder where upload the CV splits at patient level
-  model_dir: models/10/morbidity # folder to save trained model
-  report_dir: reports/10/morbidity # folder to save results
+  model_dir: models/10 # folder to save trained model
+  report_dir: reports/10 # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE

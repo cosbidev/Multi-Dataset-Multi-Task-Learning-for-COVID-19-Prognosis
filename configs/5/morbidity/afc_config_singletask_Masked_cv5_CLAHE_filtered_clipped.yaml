@@ -7,9 +7,9 @@ device:
 
 data:
   cv: 5
-  fold_dir: data/processed/AFC/10 # folder where upload the CV splits at patient level
-  model_dir: models/10/morbidity # folder to save trained model
-  report_dir: reports/10/morbidity # folder to save results
+  fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
+  model_dir: models/5 # folder to save trained model
+  report_dir: reports/5 # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE
@@ -41,5 +41,5 @@ trainer:
   scheduler: # allow to change learning rate during training
     mode: min
     patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 40 # if the validation loss do not improve for x epochs stop training
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

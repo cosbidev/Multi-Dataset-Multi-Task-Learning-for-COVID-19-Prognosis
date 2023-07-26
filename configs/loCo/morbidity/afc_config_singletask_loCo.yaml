@@ -8,8 +8,8 @@ device:
 data:
   cv: loCo
   fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/loCo/morbidity # folder to save trained model
-  report_dir: reports/loCo/morbidity # folder to save results
+  model_dir: models/loCo # folder to save trained model
+  report_dir: reports/loCo # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE

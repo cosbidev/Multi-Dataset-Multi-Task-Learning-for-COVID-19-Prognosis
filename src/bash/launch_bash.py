@@ -33,9 +33,9 @@ parser = argparse.ArgumentParser(description="Configuration File")
 parser.add_argument("--experiment_config", help="Number of folder", type=str,
                     default='../../configs/bash_experiments/experiment_setups_morbidity_5.json')
 
+
 parser.add_argument("--model_names", help="model_name", default=
     [
-     'alexnet',
      'resnet18',
      'resnet34',
      'resnet50',
@@ -48,7 +48,11 @@ parser.add_argument("--model_names", help="model_name", default=
      'shufflenet_v2_x0_5',
      'shufflenet_v2_x1_0',
      'mobilenet_v2'
-     ])
+     'resnext50_32x4d',
+     'wide_resnet50_2',
+     'mnasnet0_5',
+     'mnasnet1_0',
+	])
 """
 
      'resnext50_32x4d',
