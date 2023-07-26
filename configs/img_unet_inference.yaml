@@ -1,0 +1,22 @@
+seed: 0
+exp_name: img_unet_guided_inference
+data:
+  batch_size: 32
+  img_dir: data/AIforCOVID # path of img directory
+  masks:
+    loader_img: custom_preprocessing
+
+    box_file: None  # if equal to None do not select the bounding box
+    mask_dir: None  # if equal to None do not select lung
+    img_dim: 256 # resize shape (square)
+    same_size: True # if True, all images are resized to the same dimensions
+    saving_dir: data/AIforCOVID/processed/masks
+  dataset:
+    r2: data/AIforCOVID/imgs_r2
+    r3: data/AIforCOVID/imgs_r3
+
+
+model:
+  model_name: guided
+  pretrained: models/segmentation_brixia/trained_model.hdf5
+

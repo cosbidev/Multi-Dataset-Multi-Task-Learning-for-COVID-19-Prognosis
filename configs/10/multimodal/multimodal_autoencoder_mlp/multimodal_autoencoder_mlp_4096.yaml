@@ -1,0 +1,44 @@
+seed: 0
+exp_name: multimodal_autoencoder_mlp_4096
+
+device:
+  #cuda_device: cuda:0
+  gpu_num_workers: 32
+
+data:
+  cv: 10
+  fold_dir: ./data/processed/folds/10 # folder where upload the CV splits at patient level
+  model_dir: ./models/10/multimodal/multimodal_autoencoder_mlp # folder to save trained model
+  report_dir: ./reports/10/multimodal/multimodal_autoencoder_mlp # folder to save results
+  classes: # name of classes
+    - MILD
+    - SEVERE
+  batch_size: 32
+  modes:
+    clinical:
+      data_file: ./data/processed/clinical_data.csv # clinical data file
+    img:
+      loader_name: custom_preprocessing
+      img_dir: ../data/AIforCOVID/imgs # path of img directory
+      box_file: ./data/processed/box_data.xlsx  # if equal to None do not select the bounding box
+      mask_dir: ../data/AIforCOVID/masks  # if equal to None do not select lung
+      img_dim: 256 # resize shape (square)
+
+model:
+  model_name: conv_fc
+  pretrained:
+  h_dim: 4096
+  dropout_rate: 0.25
+
+trainer:
+  optimizer:
+    lr: 0.001 # initial learning rate
+    weight_decay: 0.00001 # weight decay
+  scheduler: # allow to change learning rate during training
+    mode: min
+    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 300 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 300
+
+features:
+  feature_dir: ./data/interim/features/10/multimodal/multimodal_autoencoder_mlp # where to save interim features
