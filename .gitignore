@@ -3,3 +3,5 @@
 /data/AIforCOVID/
 /weights/alignment/
 /weights/segmentation_afc/
+/reports/
+/models/
