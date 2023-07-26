@@ -1,0 +1,2 @@
+# Dictionary to track all the manufacturer
+{0: 'SIEMENS', 1: 'AGFA', 2: 'CARESTREAM', 3: 'VSM', 4: 'KODAK', 5: 'FUJIFILM', 6: 'DIGITEC'}
