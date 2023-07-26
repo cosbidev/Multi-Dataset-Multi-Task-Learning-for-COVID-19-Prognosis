@@ -84,7 +84,7 @@ if __name__ == "__main__":
         json_data = data_file.read()
 
     experiment_list = json.loads(json_data)
-
+    id_exp= 2
     processes = []  # List to store the subprocess instances
     for model in args.model_names:
 
@@ -92,4 +92,5 @@ if __name__ == "__main__":
             # Imposta la variabile d'ambiente con il dizionario
             os.environ["config_dir"] = "configs/{}/morbidity/{}".format(str(exp_config['fold']), exp_config['config_file'])
             os.environ["model_name"] = str(model)
+            os.environ["id_exp"] = id_exp
             launch_slurm_job('train_morbidity.sh', os.environ)

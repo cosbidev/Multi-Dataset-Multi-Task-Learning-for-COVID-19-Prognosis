@@ -25,9 +25,9 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 
 processed="data/processed"
 input_data="data/AIforCOVID/processed/box_data_AXF123.xlsx"
-config=$config_dir
-model=$model_name
-id_exp=$id_exp
+config="configs/5/morbidity/afc_config_singletask_cv5.yaml"
+model="resnet18"
+id_exp="99"
 
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
