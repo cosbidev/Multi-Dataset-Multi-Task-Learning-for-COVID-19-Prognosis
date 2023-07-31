@@ -8,5 +8,8 @@ predictions = torch.randn(32, 2)
 # (i.e., find the class with the highest score for each sample)
 predicted_labels = torch.max(predictions, dim=1).indices
 
+
+
+
 print(predicted_labels)
 
