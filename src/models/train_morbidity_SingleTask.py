@@ -2,6 +2,8 @@ import argparse
 import sys
 import os
 
+import numpy as np
+
 print('Python %s on %s' % (sys.version, sys.platform))
 print(os.getcwd(),  ' the current working directory')
 sys.path.extend('./')
@@ -17,6 +19,8 @@ from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel
 from src.utils.utils_aiforcovid import *
 
 # Configuration file
+
+
 
 
 
@@ -126,8 +130,9 @@ def main():
 
     # Results table
     report_file = os.path.join(report_dir, 'report_' + str(cv) + '.xlsx')
+    metrics_file = os.path.join(report_dir, 'report_' + str(cv) + '_metrics.xlsx')
     report_file_temp = os.path.join(report_dir, 'report_' + str(cv) + '_temp.xlsx')
-
+    report_metrics_temp = os.path.join(report_dir, 'report_' + str(cv) + '_metrics_temp.xlsx')
 
 
     # Results table
@@ -144,6 +149,21 @@ def main():
             results_frame[cat_col] = []
     acc_cat_cols = dict(acc_cat_cols)
 
+    results_metrics = {}
+    f1_cols, auc_cols, recall_cols, precision_cols = [], [], [], []
+    for fold in fold_list:
+        f1_col = str(fold) + " F1"
+        precision_col = str(fold) + " precision"
+        recall_col = str(fold) + " recall"
+        auc_col = str(fold) + " auc"
+        f1_cols.append(f1_col)
+        auc_cols.append(precision_col)
+        recall_cols.append(recall_col)
+        precision_cols.append(auc_col)
+        results_metrics[f1_col] = []
+        results_metrics[precision_col] = []
+        results_metrics[recall_col] = []
+        results_metrics[auc_col] = []
 
 
     for fold in fold_list:
@@ -158,7 +178,9 @@ def main():
 
         # Data Loaders for MORBIDITY TASK
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
+
         datasets = {step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for step in steps}
+
 
         data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
                         'val': torch.utils.data.DataLoader(datasets['val'], batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
@@ -168,8 +190,11 @@ def main():
         # Model
         #input, _, _ = next(iter(data_loaders["train"]))
         model = get_SingleTaskModel(backbone=model_name, cfg=cfg, device=device)
+        print(model)
+        
         if cfg['model']['pretrained']:
             model.load_state_dict(torch.load(os.path.join(cfg['model']['pretrained'], str(fold), "model.pt"), map_location=device))
+
         model = model.to(device)
 
         # Loss function
@@ -195,19 +220,22 @@ def main():
         # Plot Training
         plot_training(history=history, plot_training_dir=plot_training_fold_dir)
         # Evaluate the model on all the test data
-        results, acc = evaluate(model, data_loaders['test'], criterion, idx_to_class, device, topk=(1, ))
+        results, common_metrics= evaluate(model, data_loaders['test'], criterion, idx_to_class, device, topk=(1, ))
+        acc = common_metrics['Accuracy']
+
         # Test model
-
-
-
-
         print(results)
         print(acc)
 
         # Update report
         results_frame[str(fold) + " ACC"].append(acc)
+
         for cat in classes:
             results_frame[str(fold) + " ACC " + str(cat)].append(results.loc[results["class"] == cat]["top1"].item())
+        results_metrics[str(fold) + " F1"].append(common_metrics['F1 Score'])
+        results_metrics[str(fold) + " precision"].append(common_metrics['Precision'])
+        results_metrics[str(fold) + " recall"].append(common_metrics['Recall'])
+        results_metrics[str(fold) + " auc"].append(common_metrics['ROC AUC Score'])
 
         # Save temporary Results
         results_frame_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_frame.items()]))
@@ -221,6 +249,23 @@ def main():
         results_frame_temp.insert(loc=0, column='model', value=model_name)
         results_frame_temp.to_excel(report_file_temp, index=False)
 
+        # Save temporary Metrics
+        results_metrics_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_metrics.items()]))
+        results_metrics_temp.insert(loc=0, column='std F1', value=results_metrics_temp[f1_cols].std(axis=1))
+        results_metrics_temp.insert(loc=0, column='mean F1', value=results_metrics_temp[f1_cols].mean(axis=1))
+        results_metrics_temp.insert(loc=0, column='std Recall', value=results_metrics_temp[recall_cols].std(axis=1))
+        results_metrics_temp.insert(loc=0, column='mean Recall', value=results_metrics_temp[recall_cols].mean(axis=1))
+        results_metrics_temp.insert(loc=0, column='std Precision', value=results_metrics_temp[precision_cols].std(axis=1))
+        results_metrics_temp.insert(loc=0, column='mean Precision', value=results_metrics_temp[precision_cols].mean(axis=1))
+        results_metrics_temp.insert(loc=0, column='std AUC', value=results_metrics_temp[auc_cols].std(axis=1))
+        results_metrics_temp.insert(loc=0, column='mean AUC', value=results_metrics_temp[auc_cols].mean(axis=1))
+        results_metrics_temp.insert(loc=0, column='model', value=model_name)
+        results_metrics_temp.to_excel(report_metrics_temp, index=False)
+
+
+
+
+
     results_frame = pd.DataFrame.from_dict(results_frame)
     for cat in classes[::-1]:
         results_frame.insert(loc=0, column='std ACC ' + cat, value=results_frame[acc_cat_cols[cat]].std(axis=1))
@@ -228,7 +273,25 @@ def main():
     results_frame.insert(loc=0, column='std ACC', value=results_frame[acc_cols].std(axis=1))
     results_frame.insert(loc=0, column='mean ACC', value=results_frame[acc_cols].mean(axis=1))
     results_frame.insert(loc=0, column='model', value=model_name)
+
     results_frame.to_excel(report_file, index=False)
+
+    metrics_frame = pd.DataFrame.from_dict(results_metrics)
+    metrics_frame.insert(loc=0, column='std F1', value=metrics_frame[f1_cols].std(axis=1))
+    metrics_frame.insert(loc=0, column='mean F1', value=metrics_frame[f1_cols].mean(axis=1))
+    metrics_frame.insert(loc=0, column='std Recall', value=metrics_frame[recall_cols].std(axis=1))
+    metrics_frame.insert(loc=0, column='mean Recall', value=metrics_frame[recall_cols].mean(axis=1))
+    metrics_frame.insert(loc=0, column='std Precision', value=metrics_frame[precision_cols].std(axis=1))
+    metrics_frame.insert(loc=0, column='mean Precision', value=metrics_frame[precision_cols].mean(axis=1))
+    metrics_frame.insert(loc=0, column='std AUC', value=metrics_frame[auc_cols].std(axis=1))
+    metrics_frame.insert(loc=0, column='mean AUC', value=metrics_frame[auc_cols].mean(axis=1))
+    metrics_frame.insert(loc=0, column='model', value=model_name)
+
+    metrics_frame.to_excel(metrics_file, index=False)
+
+
+
+
 
 if __name__ == '__main__':
     main()

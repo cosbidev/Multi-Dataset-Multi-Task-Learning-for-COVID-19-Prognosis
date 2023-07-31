@@ -9,7 +9,8 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 
-echo  "cfg : $config_dir", "with model: $model_name"
+
+
 
 
 # Activate venv
@@ -25,12 +26,12 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 
 processed="data/processed"
 input_data="data/AIforCOVID/processed/box_data_AXF123.xlsx"
-config="configs/5/morbidity/afc_config_singletask_cv5.yaml"
-model="resnet18"
+config="configs/afc_cv5_debug.yaml"
+model="shufflenet_v2_x0_5"
 id_exp="99"
 
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_morbidity_SingleTask.py --output_dir ${processed} --input_data ${input_data} --model_name ${model} --cfg_file=${config} --id-exp=${id_exp}
+python src/models/train_morbidity_SingleTask.py --output_dir ${processed} --input_data ${input_data} --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
 # Deactivate venv
 deactivate

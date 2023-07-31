@@ -14,8 +14,9 @@ from PIL import Image
 from scipy.ndimage import shift
 from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.interpolation import map_coordinates
-
 from .utils_images import get_box, get_mask, normalize, PreprocessDicom, find_bboxes
+
+
 
 
 def get_img_loader(loader_name):
@@ -262,7 +263,7 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
             box_tot, _,_ = find_bboxes(mask)
             img = get_box(img, box_tot, masked=masked)
         except IndexError:
-            print("error, box not found")
+            print("error, box not found", img_path)
             img = img
 
     # Resize
@@ -316,6 +317,9 @@ class DatasetImgAFC(torch.utils.data.Dataset):
         self.cfg = cfg
         self.step = step
         self.data = data
+        self.data = self.drop_patient(['P_38', 'P_389', 'P_385', 'P_382','P_386', 'P_381', 'P_3_391',
+                                       'P_3_377','P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm', 'P_3_208.dcm'])
+        self.shuffle()
         self.classes = classes
         self.class_to_idx = {c: i for i, c in enumerate(sorted(classes))}
         self.idx_to_class = {i: c for c, i in self.class_to_idx.items()}
@@ -336,6 +340,12 @@ class DatasetImgAFC(torch.utils.data.Dataset):
             self.boxes = None
         self.img_dim = cfg['img_dim']
         self.loader = get_img_loader(cfg['loader_name'])
+    def shuffle(self):
+        self.data = self.data.sample(frac=1).reset_index(drop=True)
+    def drop_patient(self, patient_ids):
+        self.data = self.data[~self.data['img'].isin(patient_ids)]
+        self.data = self.data.reset_index(drop=True)
+        return self.data
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -444,6 +454,7 @@ class PrototypeDataset(torch.utils.data.Dataset):
     def __len__(self):
         'Denotes the total number of samples'
         return len(self.data)
+
 
     def __getitem__(self, index):
         x = self.data[index]

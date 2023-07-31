@@ -1,6 +1,6 @@
 [
   {
-    "config_file" : "afc_config_singletask_cv5.yaml",
+    "config_file" : "afc_config_singletask_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
     "models": "all"
@@ -13,14 +13,14 @@
 
   },
   {
-    "config_file" : "afc_config_singletask_Masked_cv5.yaml",
+    "config_file" : "afc_config_singletask_Masked_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
     "models": "all"
 
   },
   {
-    "config_file" : "afc_config_singletask_Masked_cv5_CLAHE_filtered_clipped.yaml",
+    "config_file" : "afc_config_singletask_Masked_loCo_CLAHE_filtered_clipped.yaml",
     "name" : "loCo",
     "fold" : "loCo",
     "models": "all"

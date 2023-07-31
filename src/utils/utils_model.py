@@ -1,26 +1,17 @@
 from collections import OrderedDict
-
-import setuptools
+import torch.nn.functional as F
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 import copy
-
-import torchvision
-from PIL import Image, ImageOps
 import pandas as pd
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 from tqdm import tqdm
 import os
-from skimage import morphology, color, io, transform
+from skimage import color
 import math
-import pydicom
 from torchvision import models
-
-
-
-
 
 
 
@@ -43,10 +34,10 @@ def change_head(model, new_head, model_name):
     Returns: the model with a modified head
 
     """
-    if  "resnet" or "shufflenet" in model_name:
+    if  "resnet" in model_name or "shufflenet" in model_name or "resnext" in model_name:
         model.fc = new_head
-    elif "vgg" or "mnasnet" or "mobilenet" or "alexnet" in model_name:
-        model.classifier[-1] = new_head
+    elif "vgg" in model_name or "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
+        model.classifier = new_head
     elif "densenet" in model_name:
         model.classifier = new_head
 
@@ -69,14 +60,14 @@ def get_backbone(model_name= ''):
     elif model_name == "resnet152":
         model = models.resnet152(pretrained=True)
         in_features = model.fc.in_features
-        """     
-    elif model == "squeezenet1_0":
-                model = models.squeezenet1_0(pretrained=True)
-                model.classifier[1] = nn.Conv2d(512, len(class_names), kernel_size=(1, 1), stride=(1, 1))
-            elif model == "squeezenet1_1":
-                model = models.squeezenet1_1(pretrained=True)
-                model.classifier[1] = nn.Conv2d(512, len(class_names), kernel_size=(1, 1), stride=(1, 1))
-    """
+        """    elif model == "squeezenet1_0":
+        model = models.squeezenet1_0(pretrained=True)
+        in_features = model.classifier[1].in_features 
+    elif model == "squeezenet1_1":
+        model = models.squeezenet1_1(pretrained=True)
+        model.classifier[1] = nn.Conv2d(512, len(class_names), kernel_size=(1, 1), stride=(1, 1))
+        """
+
     elif model_name == "densenet121":
         model = models.densenet121(pretrained=True)
         in_features = model.classifier.in_features
@@ -127,7 +118,7 @@ def get_backbone(model_name= ''):
         # model.classifier[-1] = nn.Linear(in_features=1280, out_features=len(class_names), bias=True)
     elif model_name == "vgg11":
         model = models.vgg11(pretrained=True)
-        in_features = model.classifier[-1].in_features
+        in_features = model.classifier[0].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
     elif model_name == "vgg11_bn":
         model = models.vgg11_bn(pretrained=True)
@@ -322,6 +313,7 @@ def train_single(model,
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
+    best_epoch = 0
     history = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
 
     epochs_no_improve = 0
@@ -456,7 +448,6 @@ def accuracy(output, target, topk=(1, )):
             res.append(correct_k.mul_(100.0 / batch_size).item())
         return res
 
-
 def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
     """Measure the performance of a trained PyTorch model
     Params
@@ -474,7 +465,8 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
     # Hold accuracy results
     acc_results = np.zeros((len(test_loader.dataset), len(topk)))
     i = 0
-
+    predicted_probs = []
+    true_labels = []
     model.eval()
     with torch.no_grad():
 
@@ -484,26 +476,45 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
             targets = targets.to(device)
             # Raw model output
             out = model(data.float())
+
+            predicted_probs.extend(out.cpu().numpy())
+            true_labels.extend(targets.cpu().numpy())
+
             # Iterate through each example
+
             for pred, true in zip(out, targets):
                 # Find topk accuracy
                 acc_results[i, :] = accuracy(pred.unsqueeze(0), true.unsqueeze(0), topk)
                 classes.append(true.item())
                 # Calculate the loss
-                loss = criterion(pred.view(1, len(idx_to_class)), true.view(1))
+                loss = criterion(pred.view(1), true.view(1))
                 losses.append(loss.item())
-                i += 1
 
+
+
+
+                i += 1
+    # Calculate metrics
+    predicted_labels = [1 if p[0] > 0.5 else 0 for p in predicted_probs] # we put the label to 1 if the second neuron is giving high porbability, or 0 in the other case
+    precision = precision_score(true_labels, predicted_labels)
+    recall = recall_score(true_labels, predicted_labels)
+    f1 = f1_score(true_labels, predicted_labels)
+    roc_auc = roc_auc_score(true_labels, predicted_labels) if np.unique(true_labels).__len__() > 1 else 0.0
     # Send results to a dataframe and calculate average across classes
     results = pd.DataFrame(acc_results, columns=[f'top{i}' for i in topk])
-    class_to_idx = test_loader.dataset.class_to_idx
     results['class'] = classes
     results['loss'] = losses
+
     results = results.groupby(classes).mean()
     results['class'] = results['class'].apply(lambda x: idx_to_class[x])
     acc = acc_results.mean()
-
-    return results, acc
+    return results, {
+        "Accuracy": acc,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1,
+        "ROC AUC Score": roc_auc
+    }
 
 
 def masked_pred(img, mask, alpha=1):
@@ -569,9 +580,31 @@ class MorbidityModel(nn.Module):
         # BACKBONE
         self.backbone, in_features = get_backbone(backbone)
         # HEAD CLASSIFICATION
-        New_classification_Head = nn.Sequential(OrderedDict(
-            [('classification-Head', nn.Linear(in_features=in_features, out_features=len(self.labels), bias=True))]))
+        if 'vgg' in backbone:
+            New_classification_Head = nn.Sequential(OrderedDict(
+                [('hidden1-Head', nn.Linear(in_features=in_features, out_features=4096, bias=True)),
+                 ('relu1-Head', nn.ReLU()),
+                 ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('hidden2-Head', nn.Linear(in_features=4096, out_features=4096 * 2, bias=True)),
+                 ('relu2-Head', nn.ReLU()),
+                 ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('hidden3-Head', nn.Linear(in_features=4096 * 2, out_features=2048, bias=True)),
+                 ('relu3-Head', nn.ReLU()),
+                 ('dropout3-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('classification-Head', nn.Linear(in_features=in_features, out_features=1, bias=True))]))
+        else:
+            New_classification_Head = nn.Sequential(OrderedDict(
+                 [  ('dropout0-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('hidden1-Head', nn.Linear(in_features=in_features, out_features=2 * in_features, bias=True)),
+                    ('relu1-Head', nn.ReLU()),
+                    ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('hidden2-Head', nn.Linear(in_features=2 * in_features, out_features=in_features, bias=True)),
+                    ('relu2-Head', nn.ReLU()),
+                    ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('classification-Head', nn.Linear(in_features=in_features, out_features=1, bias=True))]))
         # CHANGE HEAD
+        for i, param in enumerate(list(New_classification_Head.parameters())):
+            param.requires_grad = True
 
         change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
 

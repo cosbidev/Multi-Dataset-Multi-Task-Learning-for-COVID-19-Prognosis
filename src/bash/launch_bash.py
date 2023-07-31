@@ -30,13 +30,29 @@ def extract_job_id(sbatch_output):
 
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
-parser.add_argument("--experiment_config", help="Number of folder", type=str,
-                    default='../../configs/bash_experiments/experiment_setups_morbidity_5.json')
+parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,choices=['5', 'L', '10'], default= '5')
+
+config_selector = {'5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
+                    'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
+                    '10': '../../configs/bash_experiments/experiment_setups_morbidity_10.json'
+                    }
 
 
 parser.add_argument("--model_names", help="model_name", default=
     [
-     'resnet18',
+
+     'vgg11',
+     'vgg11_bn',
+     'vgg13',
+     'vgg13_bn',
+     'vgg16',
+     'vgg16_bn',
+     'vgg19',
+     'vgg19_bn'
+ 
+	])
+
+"""     'resnet18'
      'resnet34',
      'resnet50',
      'resnet101',
@@ -52,23 +68,13 @@ parser.add_argument("--model_names", help="model_name", default=
      'wide_resnet50_2',
      'mnasnet0_5',
      'mnasnet1_0',
-	])
-"""
-
      'resnext50_32x4d',
      'wide_resnet50_2',
      'mnasnet0_5',
      'mnasnet1_0',
-     'vgg11',
-     'vgg11_bn',
-     'vgg13',
-     'vgg13_bn',
-     'vgg16',
-     'vgg16_bn',
-     'vgg19',
-     'vgg19_bn'
-"""
-parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
+    'alexnet' 
+""" 
+parser.add_argument("-id","--exp_id", help="not freezed layers", default=1, type=int)
 args = parser.parse_args()
 
 
@@ -78,13 +84,12 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
 
-
-
-    with open(args.experiment_config, 'r') as data_file:
+    # Load the experiment list
+    file_config = config_selector[args.experiment_config]
+    with open(file_config, 'r') as data_file:
         json_data = data_file.read()
 
     experiment_list = json.loads(json_data)
-    id_exp= 2
     processes = []  # List to store the subprocess instances
     for model in args.model_names:
 
@@ -92,5 +97,5 @@ if __name__ == "__main__":
             # Imposta la variabile d'ambiente con il dizionario
             os.environ["config_dir"] = "configs/{}/morbidity/{}".format(str(exp_config['fold']), exp_config['config_file'])
             os.environ["model_name"] = str(model)
-            os.environ["id_exp"] = id_exp
+            os.environ["id_exp"] = str(args.exp_id)
             launch_slurm_job('train_morbidity.sh', os.environ)

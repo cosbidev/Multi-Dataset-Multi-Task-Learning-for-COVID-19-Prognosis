@@ -22,11 +22,26 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 
 # Stampa degli argomenti di input
 
+#!/usr/bin/env bashc
+
+while getopts c:i: flag
+do
+    # shellcheck disable=SC2220
+    case "${flag}" in
+        c) config_mode=${OPTARG};;
+        i) id_exp=${OPTARG};;
+    esac
+done
+echo "config_mode: $config_mode";
+echo "id_exp: $id_exp";
+
+
+
 
 
 
 #!/usr/bin/bash
 # RUN YOUR PROGRAM
-python launch_bash.py
+python launch_bash.py -e="$config_mode" -id="$id_exp"
 # Deactivate venv
 deactivate
