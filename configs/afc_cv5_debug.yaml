@@ -13,7 +13,7 @@ data:
   classes: # name of classes
     - MILD
     - SEVERE
-  batch_size: 32
+  batch_size: 64
   modes:
     img:
       loader_name: custom_preprocessing
@@ -32,7 +32,7 @@ model:
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.50
+  dropout_rate: 0.20
 
 trainer:
   optimizer:
@@ -42,4 +42,4 @@ trainer:
     mode: min
     patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 50 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 1
+  max_epochs: 50

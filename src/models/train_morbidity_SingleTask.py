@@ -15,8 +15,7 @@ import pandas as pd
 import collections
 import yaml
 from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel, plot_training, \
-    train_single, evaluate
-from src.utils.utils_aiforcovid import *
+    train_morbidity, evaluate, is_debug
 
 # Configuration file
 
@@ -61,12 +60,11 @@ def main():
     parser = argparse.ArgumentParser(description="Configuration File")
     parser.add_argument("--cfg_file", help="Number of folder", type=str)
     parser.add_argument("--model_name", help="model_name", choices=Models)
-    parser.add_argument("--output_dir", help="output directory path", default="data/processed", required=True)
-    parser.add_argument("--input_data", help="input directory path for data", default="data/processed", required=True)
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
     parser.add_argument("--id_exp", help="seed", default=1)
     args = parser.parse_args()
 
+    # Load configuration file
     with open(args.cfg_file) as file:
         cfg = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -179,7 +177,16 @@ def main():
         # Data Loaders for MORBIDITY TASK
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
+        """        if is_debug():
+            fold_data['train'] = fold_data['train'][100:200]
+            fold_data['val'] = fold_data['val'][100:200]
+            fold_data['test'] = fold_data['test'][100:200]"""
+
+
+
+
         datasets = {step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for step in steps}
+
 
 
         data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
@@ -205,16 +212,16 @@ def main():
         scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode=cfg['trainer']['scheduler']['mode'], patience=cfg['trainer']['scheduler']['patience'])
         # Train model
 
-        model, history = train_single(model=model,
-                                      criterion=criterion,
-                                      model_file_name=f'model_{model_name}.pt',
-                                      dataloaders=data_loaders,
-                                      optimizer=optimizer,
-                                      scheduler=scheduler,
-                                      num_epochs=cfg['trainer']['max_epochs'],
-                                      max_epochs_stop=cfg['trainer']['early_stopping'],
-                                      model_dir=model_fold_dir,
-                                      device=device)
+        model, history = train_morbidity(model=model,
+                                         criterion=criterion,
+                                         model_file_name=f'model_{model_name}.pt',
+                                         dataloaders=data_loaders,
+                                         optimizer=optimizer,
+                                         scheduler=scheduler,
+                                         num_epochs=cfg['trainer']['max_epochs'],
+                                         max_epochs_stop=cfg['trainer']['early_stopping'],
+                                         model_dir=model_fold_dir,
+                                         device=device)
 
 
         # Plot Training

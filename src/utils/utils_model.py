@@ -1,3 +1,4 @@
+import itertools
 from collections import OrderedDict
 import torch.nn.functional as F
 import torch
@@ -12,6 +13,7 @@ import os
 from skimage import color
 import math
 from torchvision import models
+
 
 
 
@@ -36,8 +38,8 @@ def change_head(model, new_head, model_name):
     """
     if  "resnet" in model_name or "shufflenet" in model_name or "resnext" in model_name:
         model.fc = new_head
-    elif "vgg" in model_name or "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
-        model.classifier = new_head
+    elif "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
+        model.classifier[-1] = new_head
     elif "densenet" in model_name:
         model.classifier = new_head
 
@@ -46,7 +48,7 @@ def get_backbone(model_name= ''):
     # Finetuning the convnet
     print("********************************************")
     if model_name == "resnet18":
-        model = models.resnet18(pretrained=True)
+        model = models.resnet18(weights=True)
         in_features = model.fc.in_features
     elif model_name == "resnet34":
         model = models.resnet34(pretrained=True)
@@ -116,11 +118,12 @@ def get_backbone(model_name= ''):
         model = models.mnasnet1_0(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=1280, out_features=len(class_names), bias=True)
+        """ 
     elif model_name == "vgg11":
         model = models.vgg11(pretrained=True)
         in_features = model.classifier[0].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
-    elif model_name == "vgg11_bn":
+   elif model_name == "vgg11_bn":
         model = models.vgg11_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
@@ -148,105 +151,9 @@ def get_backbone(model_name= ''):
         model = models.vgg19_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
+        """
     return model, in_features
 
-
-
-def train_single(model, data_loaders, criterion, optimizer, scheduler, num_epochs, early_stopping, model_dir, device):
-    since = time.time()
-    best_model_wts = copy.deepcopy(model.state_dict())
-    best_loss = np.Inf
-
-    history = {'train_loss': [], 'val_loss': []}
-
-    epochs_no_improve = 0
-    early_stop = False
-
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
-            if phase == 'train':
-                model.train()  # Set model to training mode
-            else:
-                model.eval()  # Set model to evaluate mode
-
-            running_loss = 0.0
-
-            # Iterate over data.
-            with tqdm(total=len(data_loaders[phase].dataset), desc=f'Epoch {epoch + 1}/{num_epochs}', unit='img') as pbar:
-                for input, labels, id in data_loaders[phase]:
-                    input = input.to(device)
-                    labels = labels.to(device)
-
-                    # zero the parameter gradients
-                    optimizer.zero_grad()
-                    # forward
-                    # track history if only in train
-                    with torch.set_grad_enabled(phase == 'train'):
-                        outputs = model(input.float())
-
-                        loss = criterion(outputs.float(), input.float())
-                        pbar.set_postfix(**{'loss (batch)': loss.item()})
-
-                        # backward + optimize only if in training phase
-                        if phase == 'train':
-                            loss.backward()
-                            optimizer.step()
-
-                    # statistics
-                    running_loss += loss.item() * input.size(0)
-
-                    pbar.update(input.shape[0])
-
-            epoch_loss = running_loss / len(data_loaders[phase].dataset)
-
-            if phase == 'val':
-                scheduler.step(epoch_loss)
-
-            # update history
-            if phase == 'train':
-                history['train_loss'].append(epoch_loss)
-            else:
-                history['val_loss'].append(epoch_loss)
-
-            print('{} Loss: {:.4f}'.format(phase, epoch_loss))
-
-            # deep copy the model
-            if phase == 'val':
-                if epoch_loss < best_loss:
-                    best_epoch = epoch
-                    best_loss = epoch_loss
-                    best_model_wts = copy.deepcopy(model.state_dict())
-                    epochs_no_improve = 0
-                else:
-                    epochs_no_improve += 1
-                    # Trigger early stopping
-                    if epochs_no_improve >= early_stopping:
-                        print(f'\nEarly Stopping! Total epochs: {epoch}%')
-                        early_stop = True
-                        break
-
-        if early_stop:
-            break
-
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best epoch: {:0f}'.format(best_epoch))
-    print('Best val loss: {:4f}'.format(best_loss))
-
-    # load best model weights
-    model.load_state_dict(best_model_wts)
-
-    # Save model
-    torch.save(model.state_dict(), os.path.join(model_dir, "model.pt"))
-
-    # Format history
-    history = pd.DataFrame.from_dict(history, orient='index').transpose()
-
-    return model, history
 
 
 def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
@@ -295,9 +202,7 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
 
     return results.reset_index().rename(columns={'index': 'class'}), acc
 
-
-
-def train_single(model,
+def train_severity(model,
                 criterion,
                 optimizer,
                 scheduler,
@@ -419,6 +324,126 @@ def train_single(model,
     return model, history
 
 
+def train_morbidity(model,
+                    criterion,
+                    optimizer,
+                    scheduler,
+                    model_file_name,
+                    dataloaders,
+                    model_dir,
+                    device,
+                    num_epochs=25,
+                    max_epochs_stop=3):
+
+    since = time.time()
+
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_acc = 0.0
+
+    best_epoch = 0
+    history = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
+
+    epochs_no_improve = 0
+    early_stop = False
+
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
+
+        # Each epoch has a training and validation phase
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()   # Set model to evaluate mode
+
+            running_loss = 0.0
+            running_corrects = 0
+
+            # Iterate over data.
+            with tqdm(total=len(dataloaders[phase].dataset), desc=f'Epoch {epoch + 1}/{num_epochs}', unit='img') as pbar:
+                for inputs, labels, file_name in dataloaders[phase]:
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward
+                    # Train updating of weights by gradient descent
+
+                    with torch.set_grad_enabled(phase == 'train'):
+
+                        outputs = model(inputs.float())
+
+                        _, preds = torch.max(outputs, 1)
+                        _, labels_gt = torch.max(labels, 1)
+                        loss = criterion(outputs, labels)
+                        pbar.set_postfix(**{'loss (batch)': loss.item()})
+
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()
+
+                    # statistics
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += torch.sum(preds == labels_gt.data)
+
+                    pbar.update(inputs.shape[0])
+
+
+
+            epoch_loss = running_loss / len(dataloaders[phase].dataset)
+            if phase == 'val':
+                scheduler.step(epoch_loss)
+            epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
+
+            # update history
+            if phase == 'train':
+                history['train_loss'].append(epoch_loss)
+                history['train_acc'].append(epoch_acc)
+            else:
+                history['val_loss'].append(epoch_loss)
+                history['val_acc'].append(epoch_acc)
+
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+
+            # deep copy the model
+            if phase == 'val':
+                if epoch_acc > best_acc and epoch!=0:
+                    best_epoch = epoch
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    epochs_no_improve = 0
+                else:
+                    epochs_no_improve += 1
+                    # Trigger early stopping
+                    if epochs_no_improve >= max_epochs_stop:
+                        print(f'\nEarly Stopping! Total epochs: {epoch}%')
+                        early_stop = True
+                        break
+
+        if early_stop:
+            break
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    print('Best epoch: {:0f}'.format(best_epoch))
+    print('Best val Acc: {:4f}'.format(best_acc))
+
+    # load best model weights
+    model.load_state_dict(best_model_wts)
+
+    # Save model
+    torch.save(model, os.path.join(model_dir, model_file_name))
+
+    # Format history
+    history = pd.DataFrame.from_dict(history, orient='index').transpose()
+
+    return model, history
+
+
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
@@ -467,6 +492,7 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
     i = 0
     predicted_probs = []
     true_labels = []
+    predicted_labels = []
     model.eval()
     with torch.no_grad():
 
@@ -475,27 +501,32 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
             data = data.to(device)
             targets = targets.to(device)
             # Raw model output
-            out = model(data.float())
+            outputs = model(data.float())
 
-            predicted_probs.extend(out.cpu().numpy())
-            true_labels.extend(targets.cpu().numpy())
+            _, preds = torch.max(outputs, 1)
+            _, labels_gt = torch.max(targets, 1)
+
+            true_labels.append(labels_gt.data.cpu().numpy())
+            predicted_labels.append(preds.data.cpu().numpy())
+
+
 
             # Iterate through each example
 
-            for pred, true in zip(out, targets):
+            for pred, true, target in zip(outputs, labels_gt, targets):
                 # Find topk accuracy
                 acc_results[i, :] = accuracy(pred.unsqueeze(0), true.unsqueeze(0), topk)
                 classes.append(true.item())
                 # Calculate the loss
-                loss = criterion(pred.view(1), true.view(1))
+                loss = criterion(pred, target)
                 losses.append(loss.item())
-
-
-
-
                 i += 1
-    # Calculate metrics
-    predicted_labels = [1 if p[0] > 0.5 else 0 for p in predicted_probs] # we put the label to 1 if the second neuron is giving high porbability, or 0 in the other case
+
+    # Calculate metrics # we put the label to 1 if the second neuron is giving high porbability, or 0 in the other case
+
+    true_labels = list(itertools.chain(*true_labels))
+    predicted_labels = list(itertools.chain(*predicted_labels))
+
     precision = precision_score(true_labels, predicted_labels)
     recall = recall_score(true_labels, predicted_labels)
     f1 = f1_score(true_labels, predicted_labels)
@@ -575,33 +606,14 @@ class MorbidityModel(nn.Module):
         layers_backbone = {'last': 2, 'last-1': 3}
         self.config = cfg
         self.device = device
-        self.labels = cfg['data']['classes']
-        self.class_to_id = {c: i for i, c in enumerate(self.labels)}
+        self.classes = cfg['data']['classes']
+        self.class_to_id = {c: i for i, c in enumerate(self.classes)}
         # BACKBONE
         self.backbone, in_features = get_backbone(backbone)
+
         # HEAD CLASSIFICATION
-        if 'vgg' in backbone:
-            New_classification_Head = nn.Sequential(OrderedDict(
-                [('hidden1-Head', nn.Linear(in_features=in_features, out_features=4096, bias=True)),
-                 ('relu1-Head', nn.ReLU()),
-                 ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                 ('hidden2-Head', nn.Linear(in_features=4096, out_features=4096 * 2, bias=True)),
-                 ('relu2-Head', nn.ReLU()),
-                 ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                 ('hidden3-Head', nn.Linear(in_features=4096 * 2, out_features=2048, bias=True)),
-                 ('relu3-Head', nn.ReLU()),
-                 ('dropout3-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                 ('classification-Head', nn.Linear(in_features=in_features, out_features=1, bias=True))]))
-        else:
-            New_classification_Head = nn.Sequential(OrderedDict(
-                 [  ('dropout0-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                    ('hidden1-Head', nn.Linear(in_features=in_features, out_features=2 * in_features, bias=True)),
-                    ('relu1-Head', nn.ReLU()),
-                    ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                    ('hidden2-Head', nn.Linear(in_features=2 * in_features, out_features=in_features, bias=True)),
-                    ('relu2-Head', nn.ReLU()),
-                    ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
-                    ('classification-Head', nn.Linear(in_features=in_features, out_features=1, bias=True))]))
+        New_classification_Head = nn.Sequential(OrderedDict(
+             [  ('classification-Head', nn.Linear(in_features=in_features, out_features=len(self.classes), bias=True))]))
         # CHANGE HEAD
         for i, param in enumerate(list(New_classification_Head.parameters())):
             param.requires_grad = True
@@ -632,14 +644,78 @@ class MorbidityModel(nn.Module):
             pass
 
 
+class SeverityModel(nn.Module):
 
+    def __init__(self, cfg=None, backbone='resnet18', device=None, freezing_layer = '', *args, **kwargs):
+
+
+
+        super(SeverityModel, self).__init__()
+        layers_backbone = {'last': 2, 'last-1': 3}
+        self.config = cfg
+        self.device = device
+        self.labels = cfg['data']['classes']
+        self.class_to_id = {c: i for i, c in enumerate(self.labels)}
+        # BACKBONE
+        self.backbone, in_features = get_backbone(backbone)
+        # HEAD CLASSIFICATION
+        if 'vgg' in backbone:
+            New_classification_Head = nn.Sequential(OrderedDict(
+                [('hidden1-Head', nn.Linear(in_features=in_features, out_features=4096, bias=True)),
+                 ('relu1-Head', nn.ReLU()),
+                 ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('hidden2-Head', nn.Linear(in_features=4096, out_features=4096 * 2, bias=True)),
+                 ('relu2-Head', nn.ReLU()),
+                 ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('hidden3-Head', nn.Linear(in_features=4096 * 2, out_features=2048, bias=True)),
+                 ('relu3-Head', nn.ReLU()),
+                 ('dropout3-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                 ('classification-Head', nn.Linear(in_features=in_features, out_features=6, bias=True))]))
+        else:
+            New_classification_Head = nn.Sequential(OrderedDict(
+                 [  ('dropout0-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('hidden1-Head', nn.Linear(in_features=in_features, out_features=2 * in_features, bias=True)),
+                    ('relu1-Head', nn.ReLU()),
+                    ('dropout1-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('hidden2-Head', nn.Linear(in_features=2 * in_features, out_features=in_features, bias=True)),
+                    ('relu2-Head', nn.ReLU()),
+                    ('dropout2-Head', nn.Dropout(p=cfg['model']['dropout_rate'])),
+                    ('classification-Head', nn.Linear(in_features=in_features, out_features=6, bias=True))]))
+        # CHANGE HEAD
+        for i, param in enumerate(list(New_classification_Head.parameters())):
+            param.requires_grad = True
+
+        change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
+
+        # Freeze Backbone
+        """        for i, param in enumerate(list(self.backbone.parameters())[::-1]):
+            if i == 0 or i == 1:
+                continue
+            if freezing_layer in layers_backbone.keys():
+                if i == layers_backbone[freezing_layer]:
+                    continue
+
+            param.requires_grad = False
+        """
+
+
+    def forward(self, x):
+        x = self.backbone(x)
+        return x
+
+
+
+        # (AIFORCOVID) MORBIDITY HEAD
+    def freeze_backbone(self):
+        for param in self.backbone.parameters():
+            pass
 
 def get_SingleTaskModel(kind='morbidity', backbone = '', cfg=None, device=None, *args, **kwargs ):
     if cfg['model']['task'] == 'morbidity':
         return MorbidityModel(cfg=cfg, backbone=backbone,device=device, *args, **kwargs)
     if cfg['model']['task'] == 'severity':
-        # TODO Severity Class
-        pass
+        return SeverityModel(cfg=cfg, backbone=backbone,device=device, *args, **kwargs)
+
 
 
 

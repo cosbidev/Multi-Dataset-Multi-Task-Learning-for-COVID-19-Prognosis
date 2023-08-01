@@ -19,6 +19,7 @@ from .utils_images import get_box, get_mask, normalize, PreprocessDicom, find_bb
 
 
 
+
 def get_img_loader(loader_name):
     if loader_name == "custom_preprocessing":
         return loader
@@ -252,7 +253,12 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
     # CLAHE / MEDIAN FILTER / CLIPPING
     img = PreprocessDicom(img, clip_limit=0.01, med_filt=3, **kwargs)
     # Filter Mask
-    mask, _ = load_img(mask_path)
+    if 'BRIXIA' in mask_path:
+        mask, _ = load_img(mask_path)
+        mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
+    else:
+        mask, _ = load_img(mask_path)
+
     if masked:
 
         img = get_mask(img, mask)
@@ -312,15 +318,18 @@ def loader_XRayVision(img_path, img_dim, mask_path=None, box=None, clahe=False, 
 
 class DatasetImgAFC(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch Dataloader to trait images'
-    def __init__(self, data, classes, cfg, step):
+    def __init__(self, data, classes, cfg, step, one_hot=True):
         'Initialization'
         self.cfg = cfg
         self.step = step
         self.data = data
-        self.data = self.drop_patient(['P_38', 'P_389', 'P_385', 'P_382','P_386', 'P_381', 'P_3_391',
+        self.data = self.drop_patient(['P_388','P_384','P_383','P_387','P_380', 'P_38', 'P_389', 'P_385', 'P_382','P_386', 'P_381', 'P_3_391',
                                        'P_3_377','P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm', 'P_3_208.dcm'])
         self.shuffle()
+        self.one_hot = one_hot
         self.classes = classes
+        self.one_hot_list =[[1,0], [0,1]]
+        self.class_to_one_hot = {c: self.one_hot_list[i] for i, c in enumerate(sorted(classes))}
         self.class_to_idx = {c: i for i, c in enumerate(sorted(classes))}
         self.idx_to_class = {i: c for c, i in self.class_to_idx.items()}
         # Mask (to select only the lungs pixels)
@@ -369,7 +378,112 @@ class DatasetImgAFC(torch.utils.data.Dataset):
         img_path = self.img_paths[id]
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['preprocess'])
         y = row.label # label
-        return x, self.class_to_idx[y], id
+
+
+        if self.one_hot:
+            y = torch.Tensor(self.class_to_one_hot[y])
+
+
+        return x, y, id
+
+
+
+
+class DatasetImgBX(torch.utils.data.Dataset):
+    'Characterizes a dataset for PyTorch Dataloader to trait images'
+    def __init__(self, data, classes, cfg, step):
+        'Initialization'
+        self.cfg = cfg
+        self.step = step
+        self.data = data
+        # self.data = self.drop_patient()
+        self.shuffle()
+        self.classes = classes
+        self.class_to_idx = {c: i for i, c in enumerate(sorted(classes))}
+        self.idx_to_class = {i: c for c, i in self.class_to_idx.items()}
+        # Mask (to select only the lungs pixels)
+        if cfg['mask_dir']:
+            self.masks = {id_patient: os.path.join(cfg['mask_dir'], '%s.tiff' % id_patient) for id_patient in data['img']}
+        else:
+            self.masks = None
+        # Box (to select only the box containing the lungs)
+        if cfg['box_file']:
+            box_data = pd.read_excel(cfg['box_file'], index_col="img", dtype=list)
+            self.boxes = {row[0]: eval(row[1]["all"]) for row in box_data.iterrows()}
+            self.box_R = {row[0]: eval(row[1]["dx"]) if isinstance(row[1]["dx"], str) else [] for row in
+                          box_data.iterrows()}
+            self.box_L = {row[0]: eval(row[1]["sx"]) if isinstance(row[1]["sx"], str) else [] for row in box_data.iterrows()}
+            self.img_paths = {row[0]: os.path.join(self.cfg['img_dir'], 'dicom_clean', str(row[0]) + '.dcm') for row in box_data.iterrows()}
+        else:
+            self.boxes = None
+
+
+        # BRIXIA SCORES DICTIONARY
+        self.brixia_scores = self.create_BX_scores_table()
+        self.img_dim = cfg['img_dim']
+        self.loader = get_img_loader(cfg['loader_name'])
+    def create_BX_scores_table(self):
+        """
+        Create a table with the brixia scores for each patient.
+        Returns:
+            BX_Scores_table: table with the brixia scores for each patient.
+        """
+        # Create table empty
+        BX_Scores_table = pd.DataFrame(index=self.data['img'], columns=['A', 'B', 'C', 'D', 'E', 'F', 'BX_R', 'BX_L', 'BX_Total'])
+        columns_scores = list(BX_Scores_table.columns)[:6]
+
+        for patient_data in self.data.iterrows():
+            brixia_score = patient_data[1]['scores'].replace('[', '').replace(']', '')
+            score_tot = {zone: 0 for i, zone in zip(range(self.classes.__len__()), columns_scores)}
+            for j, score_bx in enumerate(brixia_score):
+                score_tot[columns_scores[j]] = int(score_bx)
+            # RIGHT LUNG SCORES:
+            score_right = sum(list(score_tot.values())[0:3])
+            # LEFT LUNG SCORES:
+            score_left = sum(list(score_tot.values())[3:6])
+            # TOTAL SCORES:
+            score_total = sum(list(score_tot.values()))
+
+
+            # Store scores in the table
+            BX_Scores_table.loc[patient_data[1]['img']][columns_scores] = list(score_tot.values())
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_R'] = score_right
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_L'] = score_left
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_Total'] = score_total
+
+
+        return BX_Scores_table
+
+    def shuffle(self):
+        self.data = self.data.sample(frac=1).reset_index(drop=True)
+    def drop_patient(self, patient_ids):
+        self.data = self.data[~self.data['img'].isin(patient_ids)]
+        self.data = self.data.reset_index(drop=True)
+        return self.data
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.data)
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+        # Select sample
+        row = self.data.iloc[index]
+        id = row.img
+        if self.masks:
+            mask_path = self.masks[id]
+        else:
+            mask_path = None
+        # load box
+        if self.boxes:
+            box = self.boxes[id]
+        else:
+            box = None
+        # Load data and get label
+        img_path = self.img_paths[id]
+        x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['preprocess'])
+        y = self.brixia_scores.loc[id] # scores
+        return x, dict(y), img_path
 
 
 class DatasetClinical(torch.utils.data.Dataset):

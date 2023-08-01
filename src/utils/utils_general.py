@@ -61,19 +61,6 @@ def mkdirs(paths: list):
         mkdir(paths)
 
 
-def is_debug():
-    import sys
-    gettrace = getattr(sys, 'gettrace', None)
-
-    if gettrace is None:
-        return False
-    else:
-        v = gettrace()
-        if v is None:
-            return False
-        else:
-            return True
-
 def mkdir(path: str):
     """create a single empty directory if it didn't exist
 
@@ -112,3 +99,29 @@ def seed_all(seed=None):  # for deterministic behaviour
     torch.backends.cudnn.benchmark = False
 
     return seed
+
+def is_debug():
+    import sys
+
+    gettrace = getattr(sys, 'gettrace', None)
+
+    if gettrace is None:
+        return False
+    else:
+        v = gettrace()
+        if v is None:
+            return False
+        else:
+            return True
+
+def debugging_only():
+    """ This function is called only if in the DEBUG modality of Pycharm """
+
+    print("".center(100, '°'))
+    print(" DEBUG MODALITY ".center(100, '°'))
+    print("".center(100, '°'))
+
+def running():
+    print("".center(100, '*'))
+    print(" RUNNING CODE ".center(100, '*'))
+    print("".center(100, '*'))

@@ -14,11 +14,13 @@ from torch.optim import lr_scheduler
 import pandas as pd
 import collections
 import yaml
-from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel, plot_training, \
-    train_single, evaluate
-from src.utils.utils_aiforcovid import *
+from src import mkdir, seed_all, seed_worker, get_SingleTaskModel, plot_training, evaluate , train_severity
 
-# Configuration file
+from src.utils.utils_data import DatasetImgBX
+# Configuration files
+
+
+
 
 
 Models = [
@@ -56,11 +58,11 @@ def main():
     parser = argparse.ArgumentParser(description="Configuration File")
     parser.add_argument("--cfg_file", help="Number of folder", type=str)
     parser.add_argument("--model_name", help="model_name", choices=Models)
-    parser.add_argument("--output_dir", help="output directory path", default="data/processed", required=True)
-    parser.add_argument("--input_data", help="input directory path for data", default="data/processed", required=True)
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
     parser.add_argument("--id_exp", help="seed", default=1)
     args = parser.parse_args()
+
+
 
     with open(args.cfg_file) as file:
         cfg = yaml.load(file, Loader=yaml.FullLoader)
@@ -202,7 +204,7 @@ def main():
                      for step in steps}
 
         datasets = {
-            step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for
+            step: DatasetImgBX(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for
             step in steps}
 
         data_loaders = {
@@ -235,16 +237,16 @@ def main():
                                                    patience=cfg['trainer']['scheduler']['patience'])
         # Train model
 
-        model, history = train_single(model=model,
-                                      criterion=criterion,
-                                      model_file_name=f'model_{model_name}.pt',
-                                      dataloaders=data_loaders,
-                                      optimizer=optimizer,
-                                      scheduler=scheduler,
-                                      num_epochs=cfg['trainer']['max_epochs'],
-                                      max_epochs_stop=cfg['trainer']['early_stopping'],
-                                      model_dir=model_fold_dir,
-                                      device=device)
+        model, history = train_severity(model=model,
+                                        criterion=criterion,
+                                        model_file_name=f'model_{model_name}.pt',
+                                        dataloaders=data_loaders,
+                                        optimizer=optimizer,
+                                        scheduler=scheduler,
+                                        num_epochs=cfg['trainer']['max_epochs'],
+                                        max_epochs_stop=cfg['trainer']['early_stopping'],
+                                        model_dir=model_fold_dir,
+                                        device=device)
 
         # Plot Training
         plot_training(history=history, plot_training_dir=plot_training_fold_dir)

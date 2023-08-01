@@ -32,7 +32,7 @@ model:
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.50
+  dropout_rate: 0.25
 
 trainer:
   optimizer:
@@ -41,5 +41,5 @@ trainer:
   scheduler: # allow to change learning rate during training
     mode: min
     patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
+  early_stopping: 100 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

@@ -11,8 +11,6 @@
 
 
 
-
-
 # Activate venv
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/covid-env || exit
 source bin/activate
@@ -32,6 +30,6 @@ id_exp="99"
 
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_morbidity_SingleTask.py --output_dir ${processed} --input_data ${input_data} --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
+python src/models/train_morbidity_SingleTask.py   --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
 # Deactivate venv
 deactivate

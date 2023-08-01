@@ -40,19 +40,7 @@ config_selector = {'5': '../../configs/bash_experiments/experiment_setups_morbid
 
 parser.add_argument("--model_names", help="model_name", default=
     [
-
-     'vgg11',
-     'vgg11_bn',
-     'vgg13',
-     'vgg13_bn',
-     'vgg16',
-     'vgg16_bn',
-     'vgg19',
-     'vgg19_bn'
- 
-	])
-
-"""     'resnet18'
+     'resnet18',
      'resnet34',
      'resnet50',
      'resnet101',
@@ -72,8 +60,9 @@ parser.add_argument("--model_names", help="model_name", default=
      'wide_resnet50_2',
      'mnasnet0_5',
      'mnasnet1_0',
-    'alexnet' 
-""" 
+     'alexnet' 
+
+	])
 parser.add_argument("-id","--exp_id", help="not freezed layers", default=1, type=int)
 args = parser.parse_args()
 

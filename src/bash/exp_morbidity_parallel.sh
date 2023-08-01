@@ -13,6 +13,7 @@
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/covid-env || exit
 source bin/activate
 
+
 # Load modules
 module purge
 module load CUDA/11.3.1

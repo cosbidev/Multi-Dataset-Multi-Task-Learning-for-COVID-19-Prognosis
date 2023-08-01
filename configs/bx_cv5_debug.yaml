@@ -7,32 +7,36 @@ device:
 
 data:
   cv: 5
-  fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
-  model_dir: models/5 # folder to save trained model
-  report_dir: reports/5 # folder to save results
+  fold_dir: data/processed/BX/5 # folder where upload the CV splits at patient level
+  model_dir: models/BX/5 # folder to save trained model
+  report_dir: reports/BX/5 # folder to save results
   classes: # name of classes
-    - MILD
-    - SEVERE
+    - A
+    - B
+    - C
+    - D
+    - E
+    - F
   batch_size: 32
   modes:
     img:
       loader_name: custom_preprocessing
-      img_dir: data/AIforCOVID # path for the dicom directory
-      box_file: data/AIforCOVID/processed/box_data_AXF123.xlsx  # if equal to None do not select the bounding box
-      mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
+      img_dir: data/BRIXIA # path for the dicom directory
+      box_file: data/BRIXIA/processed/box_data_BX.xlsx  # if equal to None do not select the bounding box
+      mask_dir: data/BRIXIA/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
         clahe: False
         filter: False
         clip: False
-        masked: True
+        masked: False
         bbox_resize: True
 
 model:
   model_name: single
-  task: morbidity
+  task: severity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.25
+  dropout_rate: 0.50
 
 trainer:
   optimizer:
@@ -41,5 +45,5 @@ trainer:
   scheduler: # allow to change learning rate during training
     mode: min
     patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 100 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 300
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 1
