@@ -234,8 +234,6 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
         img: the preprocessed CXR
 
     """
-    if 'P_38' in img_path:
-        print(img_path)
     # Img
     img, photometric_interpretation = load_img(img_path)
     min_val, max_val = img.min(), img.max()
@@ -269,7 +267,6 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
             box_tot, _,_ = find_bboxes(mask)
             img = get_box(img, box_tot, masked=masked)
         except IndexError:
-            print("error, box not found", img_path)
             img = img
 
     # Resize
@@ -323,8 +320,8 @@ class DatasetImgAFC(torch.utils.data.Dataset):
         self.cfg = cfg
         self.step = step
         self.data = data
-        self.data = self.drop_patient(['P_388','P_384','P_383','P_387','P_380', 'P_38', 'P_389', 'P_385', 'P_382','P_386', 'P_381', 'P_3_391',
-                                       'P_3_377','P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm', 'P_3_208.dcm'])
+        self.data = self.drop_patient([ 'P_3_391', 'P_3_377','P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm',
+                                        'P_3_208.dcm'])
         self.shuffle()
         self.one_hot = one_hot
         self.classes = classes

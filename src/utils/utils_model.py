@@ -15,8 +15,6 @@ import math
 from torchvision import models
 
 
-
-
 model_list = ["alexnet",
               "vgg11",
               "vgg11_bn",
@@ -38,7 +36,7 @@ def change_head(model, new_head, model_name):
     """
     if  "resnet" in model_name or "shufflenet" in model_name or "resnext" in model_name:
         model.fc = new_head
-    elif "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
+    elif "vgg" in model_name or "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
         model.classifier[-1] = new_head
     elif "densenet" in model_name:
         model.classifier = new_head
@@ -47,8 +45,12 @@ def get_backbone(model_name= ''):
 
     # Finetuning the convnet
     print("********************************************")
+    model, in_features = None, 0
     if model_name == "resnet18":
-        model = models.resnet18(weights=True)
+        model = models.resnet18(pretrained=True)
+        in_features = model.fc.in_features
+    elif model_name == "googlenet":
+        model = models.googlenet(pretrained=True)
         in_features = model.fc.in_features
     elif model_name == "resnet34":
         model = models.resnet34(pretrained=True)
@@ -62,14 +64,6 @@ def get_backbone(model_name= ''):
     elif model_name == "resnet152":
         model = models.resnet152(pretrained=True)
         in_features = model.fc.in_features
-        """    elif model == "squeezenet1_0":
-        model = models.squeezenet1_0(pretrained=True)
-        in_features = model.classifier[1].in_features 
-    elif model == "squeezenet1_1":
-        model = models.squeezenet1_1(pretrained=True)
-        model.classifier[1] = nn.Conv2d(512, len(class_names), kernel_size=(1, 1), stride=(1, 1))
-        """
-
     elif model_name == "densenet121":
         model = models.densenet121(pretrained=True)
         in_features = model.classifier.in_features
@@ -118,19 +112,14 @@ def get_backbone(model_name= ''):
         model = models.mnasnet1_0(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=1280, out_features=len(class_names), bias=True)
-        """ 
-    elif model_name == "vgg11":
-        model = models.vgg11(pretrained=True)
-        in_features = model.classifier[0].in_features
-        # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
-   elif model_name == "vgg11_bn":
-        model = models.vgg11_bn(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
+    elif model_name == "vgg11_bn":
+         model = models.vgg11_bn(pretrained=True)
+         in_features = model.classifier[-1].in_features
+         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
     elif model_name == "vgg13":
-        model = models.vgg13(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
+         model = models.vgg13(pretrained=True)
+         in_features = model.classifier[-1].in_features
+         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
     elif model_name == "vgg13_bn":
         model = models.vgg13_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
@@ -143,17 +132,17 @@ def get_backbone(model_name= ''):
         model = models.vgg16_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
-    elif model_name == "vgg19":
-        model = models.vgg19(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
-    elif model_name == "vgg19_bn":
-        model = models.vgg19_bn(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
-        """
+    assert model is not None
     return model, in_features
 
+
+def update_learning_rate(optimizer, scheduler, metric=None):
+    """Update learning rates for all the networks; called at the end of every epoch"""
+    old_lr = optimizer.param_groups[0]['lr']
+    print('Metric Value', metric)
+    scheduler.step(float(metric))
+    lr = optimizer.param_groups[0]['lr']
+    print('optimizer: %.7s  --learning rate %.7f -> %.7f' % (optimizer.__class__.__name__, old_lr, lr) if not old_lr==lr else 'Learning rate non modificato: %s' %(old_lr))
 
 
 def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
@@ -396,8 +385,10 @@ def train_morbidity(model,
 
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
             if phase == 'val':
-                scheduler.step(epoch_loss)
+                val_loss = epoch_loss
+                update_learning_rate(optimizer=optimizer, scheduler=scheduler, metric=val_loss)
             epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
+
 
             # update history
             if phase == 'train':
@@ -436,7 +427,7 @@ def train_morbidity(model,
     model.load_state_dict(best_model_wts)
 
     # Save model
-    torch.save(model, os.path.join(model_dir, model_file_name))
+    torch.save(model, os.path.join(model_dir, model_file_name + '_{0}_.pt'.format(best_epoch)))
 
     # Format history
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
@@ -444,6 +435,9 @@ def train_morbidity(model,
     return model, history
 
 
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()

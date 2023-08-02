@@ -4,7 +4,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-
+def plot_test_results(test_results, plot_test_dir):
+    # Test results Loss function
+    if 'test_loss' in test_results.columns:
+        plt.figure(figsize=(8, 6))
+        plt.plot(test_results['test_loss'], label='test_loss')
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Average Negative Log Likelihood')
+        plt.title('Test Loss')
+        plt.savefig(os.path.join(plot_test_dir, "Loss"))
+        plt.show()
+    # Test results Accuracy
+    if 'test_acc' in test_results.columns:
+        plt.figure(figsize=(8, 6))
+        plt.plot(100 * test_results['test_acc'], label='test_acc')
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Average Accuracy')
+        plt.title('Test Accuracy')
+        plt.savefig(os.path.join(plot_test_dir, "Acc"))
+        plt.show()
 
 
 def plot_training(history, plot_training_dir):

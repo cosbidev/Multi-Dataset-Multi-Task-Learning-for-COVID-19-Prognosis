@@ -23,35 +23,10 @@ from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel
 
 
 
-Models = [
-"alexnet",
-"resnet18",
-"resnet34",
-"resnet50",
-"resnet101",
-"resnet152",
-"densenet121",
-"densenet169",
-"densenet161",
-"densenet201",
-"shufflenet_v2_x0_5",
-"shufflenet_v2_x1_0",
-"shufflenet_v2_x1_5",
-"mobilenet_v2",
-"resnext50_32x4d",
-"wide_resnet50_2",
-"mnasnet0_5",
-"mnasnet1_0",
-"vgg11",
-"vgg11_bn",
-"vgg13",
-"vgg13_bn",
-"vgg16",
-"vgg16_bn",
-"vgg19",
-"vgg19_bn"
-]
-
+Models = ["alexnet", "vgg11", "vgg11_bn", "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
+              "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
+              "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
+              "shufflenet_v2_x1_0", "mobilenet_v2", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
 
 
 
@@ -148,20 +123,25 @@ def main():
     acc_cat_cols = dict(acc_cat_cols)
 
     results_metrics = {}
-    f1_cols, auc_cols, recall_cols, precision_cols = [], [], [], []
+    f1_cols, acc_cols_test, auc_cols, recall_cols, precision_cols = [], [], [], [], []
     for fold in fold_list:
+        acc_col_test = str(fold) + " ACC test "
         f1_col = str(fold) + " F1"
         precision_col = str(fold) + " precision"
         recall_col = str(fold) + " recall"
         auc_col = str(fold) + " auc"
+
+        acc_cols_test.append(acc_col_test)
         f1_cols.append(f1_col)
         auc_cols.append(precision_col)
         recall_cols.append(recall_col)
         precision_cols.append(auc_col)
+        results_metrics[acc_col_test] = []
         results_metrics[f1_col] = []
         results_metrics[precision_col] = []
         results_metrics[recall_col] = []
         results_metrics[auc_col] = []
+
 
 
     for fold in fold_list:
@@ -177,10 +157,10 @@ def main():
         # Data Loaders for MORBIDITY TASK
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
-        """        if is_debug():
+        if is_debug():
             fold_data['train'] = fold_data['train'][100:200]
             fold_data['val'] = fold_data['val'][100:200]
-            fold_data['test'] = fold_data['test'][100:200]"""
+            fold_data['test'] = fold_data['test'][100:200]
 
 
 
@@ -209,12 +189,17 @@ def main():
         # Optimizer
         optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
         # LR Scheduler
-        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode=cfg['trainer']['scheduler']['mode'], patience=cfg['trainer']['scheduler']['patience'])
+        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                   mode=cfg['trainer']['scheduler']['mode'],
+                                                   patience=cfg['trainer']['scheduler']['patience'],
+                                                   min_lr=float(cfg['trainer']['scheduler']['min_lr']),
+                                                   factor=cfg['trainer']['scheduler']['factor'])
+
         # Train model
 
         model, history = train_morbidity(model=model,
                                          criterion=criterion,
-                                         model_file_name=f'model_{model_name}.pt',
+                                         model_file_name=f'model_{model_name}',
                                          dataloaders=data_loaders,
                                          optimizer=optimizer,
                                          scheduler=scheduler,
@@ -228,6 +213,8 @@ def main():
         plot_training(history=history, plot_training_dir=plot_training_fold_dir)
         # Evaluate the model on all the test data
         results, common_metrics= evaluate(model, data_loaders['test'], criterion, idx_to_class, device, topk=(1, ))
+
+
         acc = common_metrics['Accuracy']
 
         # Test model
@@ -239,7 +226,9 @@ def main():
 
         for cat in classes:
             results_frame[str(fold) + " ACC " + str(cat)].append(results.loc[results["class"] == cat]["top1"].item())
+
         results_metrics[str(fold) + " F1"].append(common_metrics['F1 Score'])
+        results_metrics[str(fold) + " ACC test "].append(acc)
         results_metrics[str(fold) + " precision"].append(common_metrics['Precision'])
         results_metrics[str(fold) + " recall"].append(common_metrics['Recall'])
         results_metrics[str(fold) + " auc"].append(common_metrics['ROC AUC Score'])
@@ -272,6 +261,8 @@ def main():
 
 
 
+
+    # Save Results
 
     results_frame = pd.DataFrame.from_dict(results_frame)
     for cat in classes[::-1]:

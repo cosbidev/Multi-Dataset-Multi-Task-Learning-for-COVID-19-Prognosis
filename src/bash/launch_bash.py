@@ -39,30 +39,15 @@ config_selector = {'5': '../../configs/bash_experiments/experiment_setups_morbid
 
 
 parser.add_argument("--model_names", help="model_name", default=
-    [
-     'resnet18',
-     'resnet34',
-     'resnet50',
-     'resnet101',
-     'resnet152',
-     'densenet121',
-     'densenet169',
-     'densenet161',
-     'densenet201',
-     'shufflenet_v2_x0_5',
-     'shufflenet_v2_x1_0',
-     'mobilenet_v2'
-     'resnext50_32x4d',
-     'wide_resnet50_2',
-     'mnasnet0_5',
-     'mnasnet1_0',
-     'resnext50_32x4d',
-     'wide_resnet50_2',
-     'mnasnet0_5',
-     'mnasnet1_0',
-     'alexnet' 
+    ["resnet18"])
 
-	])
+"""alexnet", "vgg11", "vgg11_bn", "vgg13", "vgg13_bn", "vgg16", "vgg16_bn",
+    "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
+                  "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", 	"shufflenet_v2_x0_5",
+                  "shufflenet_v2_x1_0", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5",
+                  "mnasnet1_0
+"""
+
 parser.add_argument("-id","--exp_id", help="not freezed layers", default=1, type=int)
 args = parser.parse_args()
 
