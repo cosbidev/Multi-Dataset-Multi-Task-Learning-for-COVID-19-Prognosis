@@ -44,4 +44,4 @@ trainer:
     min_lr: 1e-6
     factor: 0.6 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 10 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 10
+  max_epochs: 40

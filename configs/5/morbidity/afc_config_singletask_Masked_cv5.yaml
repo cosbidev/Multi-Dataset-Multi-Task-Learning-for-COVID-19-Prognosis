@@ -32,7 +32,8 @@ model:
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.20
+  dropout_rate: 0.25
+  softmax: False # if True, the output is a probability distribution over the classes
 
 trainer:
   optimizer:
@@ -40,8 +41,8 @@ trainer:
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min
-    patience: 5
+    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-6
-    factor: 0.6 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 30 # if the validation loss do not improve for x epochs stop training
+    factor: 0.5 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

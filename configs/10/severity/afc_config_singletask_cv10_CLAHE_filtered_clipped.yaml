@@ -6,14 +6,14 @@ device:
   gpu_num_workers: 4
 
 data:
-  cv: loCo
-  fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/AFC/loCo # folder to save trained model
-  report_dir: reports/AFC/loCo # folder to save results
+  cv: 10
+  fold_dir: data/processed/AFC/10 # folder where upload the CV splits at patient level
+  model_dir: models/10 # folder to save trained model
+  report_dir: reports/10 # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE
-  batch_size: 64
+  batch_size: 32
   modes:
     img:
       loader_name: custom_preprocessing
@@ -22,18 +22,17 @@ data:
       mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
-        clahe: False
-        filter: False
-        clip: False
-        masked: True
+        clahe: True
+        filter: Ture
+        clip: True
+        masked: False
         bbox_resize: True
 
 model:
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.25
-  softmax: False # if True, the output is a probability distribution over the classes
+  dropout_rate: 0.50
 
 trainer:
   optimizer:
@@ -42,7 +41,5 @@ trainer:
   scheduler: # allow to change learning rate during training
     mode: min
     patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-    min_lr: 1e-6
-    factor: 0.5 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
+  early_stopping: 40 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

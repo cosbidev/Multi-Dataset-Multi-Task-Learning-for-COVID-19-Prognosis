@@ -1,25 +1,29 @@
 seed: 0
-exp_name: morbidity_singletask
+exp_name: severity_singletask
 
 device:
   cuda_device: cuda:0
-  gpu_num_workers: 4
+  gpu_num_workers: 6
 
 data:
   cv: loCo
-  fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/AFC/loCo # folder to save trained model
-  report_dir: reports/AFC/loCo # folder to save results
+  fold_dir: data/processed/BX/loCo # folder where upload the CV splits at patient level
+  model_dir: models/BX/loCo # folder to save trained model
+  report_dir: reports/BX/loCo # folder to save results
   classes: # name of classes
-    - MILD
-    - SEVERE
+    - A
+    - B
+    - C
+    - D
+    - E
+    - F
   batch_size: 64
   modes:
     img:
       loader_name: custom_preprocessing
-      img_dir: data/AIforCOVID # path for the dicom directory
-      box_file: data/AIforCOVID/processed/box_data_AXF123.xlsx  # if equal to None do not select the bounding box
-      mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
+      img_dir: data/BRIXIA # path for the dicom directory
+      box_file: data/BRIXIA/processed/box_data_BX.xlsx  # if equal to None do not select the bounding box
+      mask_dir: data/BRIXIA/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
         clahe: False
@@ -32,8 +36,8 @@ model:
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.25
-  softmax: False # if True, the output is a probability distribution over the classes
+  dropout_rate: 0.20
+  regression_type: area
 
 trainer:
   optimizer:

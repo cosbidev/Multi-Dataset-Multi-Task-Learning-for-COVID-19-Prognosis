@@ -43,6 +43,6 @@ echo "id_exp: $id_exp";
 
 #!/usr/bin/bash
 # RUN YOUR PROGRAM
-python launch_bash.py -e="$config_mode" -id="$id_exp" -k morbidity
+python launch_bash.py -e="$config_mode" -id="$id_exp" -k severity
 # Deactivate venv
 deactivate

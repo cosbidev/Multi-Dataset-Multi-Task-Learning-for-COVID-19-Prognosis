@@ -480,7 +480,7 @@ class DatasetImgBX(torch.utils.data.Dataset):
         img_path = self.img_paths[id]
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['preprocess'])
         y = self.brixia_scores.loc[id] # scores
-        return x, dict(y), img_path
+        return x, torch.Tensor(y.array), img_path
 
 
 class DatasetClinical(torch.utils.data.Dataset):

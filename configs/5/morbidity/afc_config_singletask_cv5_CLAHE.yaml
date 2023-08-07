@@ -6,10 +6,10 @@ device:
   gpu_num_workers: 4
 
 data:
-  cv: loCo
-  fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/AFC/loCo # folder to save trained model
-  report_dir: reports/AFC/loCo # folder to save results
+  cv: 5
+  fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
+  model_dir: models/AFC/5 # folder to save trained model
+  report_dir: reports/AFC/5 # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE
@@ -22,10 +22,10 @@ data:
       mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
-        clahe: False
+        clahe: True
         filter: False
         clip: False
-        masked: True
+        masked: False
         bbox_resize: True
 
 model:

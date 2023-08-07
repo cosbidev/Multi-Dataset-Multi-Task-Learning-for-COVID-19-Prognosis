@@ -21,20 +21,11 @@ from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel
 
 
 
-
-
-Models = ["alexnet", "vgg11", "vgg11_bn", "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
-              "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
-              "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
-              "shufflenet_v2_x1_0", "mobilenet_v2", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
-
-
-
 def main():
     # Configuration file
     parser = argparse.ArgumentParser(description="Configuration File")
     parser.add_argument("--cfg_file", help="Number of folder", type=str)
-    parser.add_argument("--model_name", help="model_name", choices=Models)
+    parser.add_argument("--model_name", help="model_name")
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
     parser.add_argument("--id_exp", help="seed", default=1)
     args = parser.parse_args()
@@ -79,12 +70,12 @@ def main():
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
     # Files and Directories
     assert model_name in [
-              "vgg11",
+              "vgg11", "shufflenet_v2_x1_5", "squeezenet1_0", "squeezenet1_1", "mobilenet_v2",
               "vgg11_bn",
               "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
-              "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
+              "resnet18", "resnet34", "resnet50", "resnet101", "resnet152",
               "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
-              "shufflenet_v2_x1_0", "mobilenet_v2", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
+              "shufflenet_v2_x1_0",  "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
     model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name) # folder to save model
     print(' ----------| Model directory: ', model_dir)
 
@@ -189,6 +180,7 @@ def main():
         # Optimizer
         optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
         # LR Scheduler
+
         scheduler = lr_scheduler.ReduceLROnPlateau(optimizer,
                                                    mode=cfg['trainer']['scheduler']['mode'],
                                                    patience=cfg['trainer']['scheduler']['patience'],

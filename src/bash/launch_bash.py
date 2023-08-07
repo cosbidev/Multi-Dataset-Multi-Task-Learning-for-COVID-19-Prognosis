@@ -25,41 +25,75 @@ def extract_job_id(sbatch_output):
     return job_id
 
 
-
-
-
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
-parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,choices=['5', 'L', '10'], default= '5')
-
-config_selector = {'5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
-                    'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
-                    '10': '../../configs/bash_experiments/experiment_setups_morbidity_10.json'
-                    }
-
+parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str, choices=['5', 'L', '10'],
+                    default='5')
+parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
+                    choices=['morbidity', 'severity', 'both'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
-    ["resnet18"])
+[
 
-"""alexnet", "vgg11", "vgg11_bn", "vgg13", "vgg13_bn", "vgg16", "vgg16_bn",
-    "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "squeezenet1_0", "squeezenet1_1",
-                  "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", 	"shufflenet_v2_x0_5",
-                  "shufflenet_v2_x1_0", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5",
-                  "mnasnet1_0
+    "squeezenet1_0",
+    "squeezenet1_1",
+])
+
 """
 
-parser.add_argument("-id","--exp_id", help="not freezed layers", default=1, type=int)
+    "mnasnet0_5",
+    "mnasnet1_0" ,
+    "vgg11",
+    "squeezenet1_0",
+    "squeezenet1_1",
+    "mobilenet_v2", 
+    "googlenet",
+    "alexnet",
+    "vgg11_bn",
+    "vgg13",
+    "vgg13_bn",
+    "vgg16",
+    "vgg16_bn",
+    "resnet18",
+    "resnet34",
+    "resnet50",
+    "resnet101",
+    "resnet152",
+    "densenet121",
+    "densenet169",
+    "densenet161",
+    "densenet201",
+    "googlenet",
+    "shufflenet_v2_x0_5",
+    "shufflenet_v2_x1_0",
+    "resnext50_32x4d",
+    "wide_resnet50_2",
+"""
+
+
+parser.add_argument("-id", "--exp_id", help="not freezed layers", default=1, type=int)
 args = parser.parse_args()
 
-
-
-
+config_selector = {
+    'morbidity':
+    {
+        '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
+        'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
+        '10': '../../configs/bash_experiments/experiment_setups_morbidity_10.json'
+    },
+    'severity':
+        {
+            '5': '../../configs/bash_experiments/experiment_setups_severity_5.json',
+            'L': '../../configs/bash_experiments/experiment_setups_severity_loCo.json'
+        }
+}
 
 
 if __name__ == "__main__":
 
     # Load the experiment list
-    file_config = config_selector[args.experiment_config]
+    file_config = config_selector[args.modality_kind][args.experiment_config]
+    print(file_config)
     with open(file_config, 'r') as data_file:
         json_data = data_file.read()
 
@@ -69,7 +103,16 @@ if __name__ == "__main__":
 
         for i, exp_config in enumerate(experiment_list):
             # Imposta la variabile d'ambiente con il dizionario
-            os.environ["config_dir"] = "configs/{}/morbidity/{}".format(str(exp_config['fold']), exp_config['config_file'])
+            os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
+                                                                       exp_config['config_file'])
             os.environ["model_name"] = str(model)
             os.environ["id_exp"] = str(args.exp_id)
-            launch_slurm_job('train_morbidity.sh', os.environ)
+            print("modality", args.modality_kind,
+                  "model", model, "\n",
+                  "id", args.exp_id,"\n",
+                  "fold", exp_config['fold'],"\n",
+                  "config", exp_config['config_file'])
+            launch_slurm_job('train_severity.sh' if args.modality_kind == "severity" else 'train_morbidity.sh',
+                             os.environ)
+
+

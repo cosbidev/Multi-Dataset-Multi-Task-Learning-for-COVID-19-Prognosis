@@ -245,8 +245,13 @@ def get_box(img, box, masked=False):
                 shift = abs(box[0] + box[2] + rigth_top - img_h)
                 left_down = int(left_down + shift)
                 rigth_top = int(rigth_top - shift)
-            img_to_box = img[box[1]: box[1] + box[3], box[0] - left_down: box[0] + box[2] + rigth_top]
-            return img_to_box
+            if box[0] - left_down < 0:
+                return img[box[1]: box[1] + box[3], : box[0] + box[2] + rigth_top]
+            elif box[0] + box[2] + rigth_top > img_w:
+                return img[box[1]: box[1] + box[3], box[0] - left_down:]
+            else:
+                return img[box[1]: box[1] + box[3], box[0] - left_down: box[0] + box[2] + rigth_top]
+
         elif l_h < l_w:
             if box[1] < left_down:
                 shift = abs(box[1] - left_down)
@@ -257,8 +262,12 @@ def get_box(img, box, masked=False):
                 left_down = int(left_down + shift)
                 rigth_top = int(rigth_top - shift)
 
-            img_to_box = img[box[1] - left_down: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
-            return img_to_box
+            if box[1] - left_down < 0:
+                return img[: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
+            elif box[1] + box[3] + rigth_top > img_h:
+                return img[box[1] - left_down: , box[0]: box[0] + box[2]]
+            else:
+                return img[box[1] - left_down: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
 
 
 

@@ -3,13 +3,13 @@ exp_name: morbidity_singletask
 
 device:
   cuda_device: cuda:0
-  gpu_num_workers: 4
+  gpu_num_workers: 6
 
 data:
-  cv: loCo
-  fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/AFC/loCo # folder to save trained model
-  report_dir: reports/AFC/loCo # folder to save results
+  cv: 5
+  fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
+  model_dir: models/AFC/5 # folder to save trained model
+  report_dir: reports/AFC/5 # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE
@@ -22,9 +22,9 @@ data:
       mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
-        clahe: True
-        filter: True
-        clip: True
+        clahe: False
+        filter: False
+        clip: False
         masked: True
         bbox_resize: True
 
@@ -33,6 +33,7 @@ model:
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.25
+  softmax: True # if True, the output is a probability distribution over the classes
 
 trainer:
   optimizer:
@@ -40,8 +41,8 @@ trainer:
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min
-    patience: 5
+    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-6
-    factor: 0.6 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 30 # if the validation loss do not improve for x epochs stop training
+    factor: 0.5 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

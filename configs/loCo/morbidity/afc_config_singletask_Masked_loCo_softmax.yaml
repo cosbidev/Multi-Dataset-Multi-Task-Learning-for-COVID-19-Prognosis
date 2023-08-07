@@ -33,7 +33,7 @@ model:
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.25
-  softmax: False # if True, the output is a probability distribution over the classes
+  softmax: True # if True, the output is a probability distribution over the classes
 
 trainer:
   optimizer:

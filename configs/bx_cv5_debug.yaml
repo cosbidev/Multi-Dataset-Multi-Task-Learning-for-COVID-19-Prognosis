@@ -1,5 +1,5 @@
 seed: 0
-exp_name: morbidity_singletask
+exp_name: severity_singletask
 
 device:
   cuda_device: cuda:0
@@ -37,6 +37,7 @@ model:
   task: severity
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.50
+  regression_type: area
 
 trainer:
   optimizer:
@@ -44,6 +45,8 @@ trainer:
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min
-    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 1
+    patience: 1
+    min_lr: 1e-6
+    factor: 0.6 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 10 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 5

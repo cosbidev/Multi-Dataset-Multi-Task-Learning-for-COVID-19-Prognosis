@@ -22,9 +22,9 @@ data:
       mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
       img_dim: 256 # resize shape (square)
       preprocess:
-        clahe: False
-        filter: False
-        clip: False
+        clahe: True
+        filter: True
+        clip: True
         masked: True
         bbox_resize: True
 
