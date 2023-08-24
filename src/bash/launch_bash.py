@@ -33,42 +33,41 @@ parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
                     choices=['morbidity', 'severity', 'both'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
-[
-
+[	
+    "densenet201",
+    "densenet121",
+    "densenet161",
+    "googlenet",
+    "mobilenet_v2", 
     "squeezenet1_0",
     "squeezenet1_1",
-])
-
-"""
-
+    "densenet121",
+    "vgg11_bn",
+    "densenet169",
+    "wide_resnet50_2",
     "mnasnet0_5",
     "mnasnet1_0" ,
     "vgg11",
     "squeezenet1_0",
     "squeezenet1_1",
-    "mobilenet_v2", 
-    "googlenet",
     "alexnet",
     "vgg11_bn",
-    "vgg13",
-    "vgg13_bn",
     "vgg16",
     "vgg16_bn",
+    "vgg13_bn",
+    "vgg13",
     "resnet18",
     "resnet34",
     "resnet50",
     "resnet101",
     "resnet152",
-    "densenet121",
-    "densenet169",
-    "densenet161",
-    "densenet201",
     "googlenet",
     "shufflenet_v2_x0_5",
     "shufflenet_v2_x1_0",
     "resnext50_32x4d",
     "wide_resnet50_2",
-"""
+])
+
 
 
 parser.add_argument("-id", "--exp_id", help="not freezed layers", default=1, type=int)
@@ -99,9 +98,18 @@ if __name__ == "__main__":
 
     experiment_list = json.loads(json_data)
     processes = []  # List to store the subprocess instances
-    for model in args.model_names:
 
-        for i, exp_config in enumerate(experiment_list):
+
+    for i, exp_config in enumerate(experiment_list):
+
+        args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
+
+        print('exp ', exp_config, 'models', args.model_names)
+
+        
+        for model in args.model_names:
+
+
             # Imposta la variabile d'ambiente con il dizionario
             os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
                                                                        exp_config['config_file'])
@@ -114,5 +122,6 @@ if __name__ == "__main__":
                   "config", exp_config['config_file'])
             launch_slurm_job('train_severity.sh' if args.modality_kind == "severity" else 'train_morbidity.sh',
                              os.environ)
+
 
 

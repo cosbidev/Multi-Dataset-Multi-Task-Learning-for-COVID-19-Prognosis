@@ -55,10 +55,11 @@ def main():
     LearningRate = f'_LR{cfg["trainer"]["optimizer"]["lr"]}'
     Masked = '_LungMask' if data_cfg['preprocess']['masked'] else '_Entire'
     bbox_resize = '_LungBbox' if data_cfg['preprocess']['bbox_resize'] else '_Entire' if cfg['data']['modes']['img']['bbox_resize'] else ''
+    softmax = '_Softmax' if cfg['model']['softmax'] else ''
+
     # Experiment name
-    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + Drop + CLAHE + Filter + Clip + Masked + bbox_resize
-
-
+    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + Drop + softmax + CLAHE + Filter + Clip + Masked + bbox_resize
+    print(' ----------| Experiment name: ', exp_name)
 
     # Device
     device = torch.device(cfg['device']['cuda_device'] if torch.cuda.is_available() else "cpu")

@@ -1,18 +1,15 @@
 [
   {
-    "config_file" : "afc_config_singletask_cv5.yaml",
+    "config_file" : "afc_config_singletask_cv5_softmax.yaml",
     "name" : "cv5",
     "fold" : 5,
     "models": "all"
 
   },
   {
-    "config_file" : "afc_config_singletask_Masked_cv5.yaml",
+    "config_file" : "afc_config_singletask_Masked_cv5_softmax.yaml",
     "name" : "cv5",
     "fold" : 5,
     "models": "all"
-
   }
-
-
 ]

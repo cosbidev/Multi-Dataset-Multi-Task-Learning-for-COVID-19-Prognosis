@@ -472,6 +472,8 @@ def train_morbidity(model,
                     with torch.set_grad_enabled(phase == 'train'):
 
                         outputs = model(inputs.float())
+                        if model.config['model']['softmax']:
+                            outputs = nn.Softmax(dim=1)(outputs)
 
                         _, preds = torch.max(outputs, 1)
                         _, labels_gt = torch.max(labels, 1)
@@ -658,6 +660,8 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
             targets = targets.to(device)
             # Raw model output
             outputs = model(data.float())
+            if model.config['model']['softmax']:
+                outputs = nn.Softmax(dim=1)(outputs)
 
             _, preds = torch.max(outputs, 1)
             _, labels_gt = torch.max(targets, 1)
@@ -666,6 +670,7 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
             predicted_labels.append(preds.data.cpu().numpy())
 
             # Iterate through each example
+
 
             for pred, true, target in zip(outputs, labels_gt, targets):
                 # Find topk accuracy

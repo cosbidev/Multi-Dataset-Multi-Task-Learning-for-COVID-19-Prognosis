@@ -1,14 +1,14 @@
 [
   {
-    "config_file" : "bx_config_singletask_cv5.yaml",
-    "name" : "cv5",
-    "fold" : 5,
-    "models": "all"
-  },
-  {
     "config_file" : "bx_config_singletask_Masked_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "all"
+    "models": "['densenet121','densenet161','vgg13_bn','vgg16_bn','vgg13']"
+  },
+  {
+    "config_file" : "bx_config_singletask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models":"['densenet121','densenet161','densenet169','googlenet','mnasnet0_5','mnasnet1_0','mobilenet_v2','resnet18','vgg13_bn','vgg16_bn']"
   }
 ]
