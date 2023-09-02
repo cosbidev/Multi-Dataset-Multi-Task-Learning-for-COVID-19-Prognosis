@@ -4,22 +4,31 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a6295acc-a524-4d5a-8135-ac9d0ee7da35" name="Changes" comment="commit merge">
-      <change afterPath="$PROJECT_DIR$/src/bash/srun_command" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/COVID19-ItaChina.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/COVID19-ItaChina.iml" afterDir="false" />
+    <list default="true" id="a6295acc-a524-4d5a-8135-ac9d0ee7da35" name="Changes" comment="commit some correction for training morbidity/severity">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_Masked_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_Masked_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5_softmax.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5_softmax.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_Masked_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_Masked_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_cv5.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/configs/afc_cv5_debug.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/afc_cv5_debug.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_5.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_5.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_loCo.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_loCo.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_5.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_5.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_loCo.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_loCo.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_Masked_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_Masked_loCo.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_loCo.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_Masked_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_Masked_loCo.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_loCo.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/file_canc_job" beforeDir="false" afterPath="$PROJECT_DIR$/file_canc_job" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bash/launch_bash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/launch_bash.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bash/train_morbidity.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_morbidity.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bash/train_severity.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_severity.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/utils_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils_visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_visualization.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -180,7 +189,13 @@
       <workItem from="1691574464560" duration="2173000" />
       <workItem from="1691586913417" duration="1197000" />
       <workItem from="1691738322537" duration="2818000" />
-      <workItem from="1692890023253" duration="1708000" />
+      <workItem from="1692890023253" duration="1771000" />
+      <workItem from="1692956223601" duration="875000" />
+      <workItem from="1693148445044" duration="13391000" />
+      <workItem from="1693409626158" duration="1030000" />
+      <workItem from="1693476772680" duration="1280000" />
+      <workItem from="1693497235652" duration="7923000" />
+      <workItem from="1693665148137" duration="1239000" />
     </task>
     <task id="LOCAL-00001" summary="first commit">
       <option name="closed" value="true" />
@@ -270,7 +285,15 @@
       <option name="project" value="LOCAL" />
       <updated>1691403293570</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="commit some correction for training morbidity/severity">
+      <option name="closed" value="true" />
+      <created>1692892895312</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1692892895312</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -328,7 +351,8 @@
     <MESSAGE value="train_morbidity.sh, train_morbidity_debug.sh" />
     <MESSAGE value="commit &lt;exp_morbidity_parallel.sh, launch_bash.py, train_morbidity_SingleTask.py, train_severity_SingleTask.py, utils_data.py, utils_model.py&gt;" />
     <MESSAGE value="commit merge" />
-    <option name="LAST_COMMIT_MESSAGE" value="commit merge" />
+    <MESSAGE value="commit some correction for training morbidity/severity" />
+    <option name="LAST_COMMIT_MESSAGE" value="commit some correction for training morbidity/severity" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -340,13 +364,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py</url>
-          <line>134</line>
-          <option name="timeStamp" value="58" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/utils/utils_model.py</url>
-          <line>477</line>
-          <option name="timeStamp" value="59" />
+          <line>56</line>
+          <option name="timeStamp" value="53" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -357,8 +376,8 @@
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="train_morbidity_SingleTask Coverage Results" MODIFIED="1692890547700" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="train_morbidity_SingleTask Coverage Results" MODIFIED="1693234001082" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/COVID19_ItaChina$severity_debug.coverage" NAME="severity_debug Coverage Results" MODIFIED="1691154540389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1691477312121" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1693665791614" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

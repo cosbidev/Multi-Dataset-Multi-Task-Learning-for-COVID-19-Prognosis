@@ -121,14 +121,6 @@ def get_backbone(model_name=''):
         model = models.wide_resnet50_2(pretrained=True)
         in_features = model.fc.in_features
         # model.fc = nn.Linear(2048, len(class_names), bias=True)
-    elif model_name == "mnasnet0_5":
-        model = models.mnasnet0_5(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=1280, out_features=len(class_names), bias=True)
-    elif model_name == "mnasnet1_0":
-        model = models.mnasnet1_0(pretrained=True)
-        in_features = model.classifier[-1].in_features
-        # model.classifier[-1] = nn.Linear(in_features=1280, out_features=len(class_names), bias=True)
     elif model_name == "vgg11_bn":
         model = models.vgg11_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
@@ -388,19 +380,20 @@ def train_severity(model,
             print('{} Loss: {:.4f}'.format(phase, epoch_loss))
 
             # deep copy the model
-            if phase == 'val':
-                if epoch_loss < best_loss:
-                    best_epoch = epoch
-                    best_loss = epoch_loss
-                    best_model_wts = copy.deepcopy(model.state_dict())
-                    epochs_no_improve = 0
-                else:
-                    epochs_no_improve += 1
-                    # Trigger early stopping
-                    if epochs_no_improve >= max_epochs_stop:
-                        print(f'\nEarly Stopping! Total epochs: {epoch}%')
-                        early_stop = True
-                        break
+            if epoch > model.config['trainer']['warmup_epochs']:
+                if phase == 'val':
+                    if epoch_loss < best_loss:
+                        best_epoch = epoch
+                        best_loss = epoch_loss
+                        best_model_wts = copy.deepcopy(model.state_dict())
+                        epochs_no_improve = 0
+                    else:
+                        epochs_no_improve += 1
+                        # Trigger early stopping
+                        if epochs_no_improve >= max_epochs_stop:
+                            print(f'\nEarly Stopping! Total epochs: {epoch}%')
+                            early_stop = True
+                            break
 
         print()
 
@@ -508,19 +501,20 @@ def train_morbidity(model,
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
             # deep copy the model
-            if phase == 'val':
-                if epoch_acc > best_acc and epoch != 0:
-                    best_epoch = epoch
-                    best_acc = epoch_acc
-                    best_model_wts = copy.deepcopy(model.state_dict())
-                    epochs_no_improve = 0
-                else:
-                    epochs_no_improve += 1
-                    # Trigger early stopping
-                    if epochs_no_improve >= max_epochs_stop:
-                        print(f'\nEarly Stopping! Total epochs: {epoch}%')
-                        early_stop = True
-                        break
+            if epoch > model.config['trainer']['warmup_epochs']:
+                if phase == 'val':
+                    if epoch_acc > best_acc and epoch != 0:
+                        best_epoch = epoch
+                        best_acc = epoch_acc
+                        best_model_wts = copy.deepcopy(model.state_dict())
+                        epochs_no_improve = 0
+                    else:
+                        epochs_no_improve += 1
+                        # Trigger early stopping
+                        if epochs_no_improve >= max_epochs_stop:
+                            print(f'\nEarly Stopping! Total epochs: {epoch}%')
+                            early_stop = True
+                            break
 
         if early_stop:
             break
@@ -545,6 +539,8 @@ def train_morbidity(model,
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+
+
 
 
 class Identity(nn.Module):
@@ -761,32 +757,34 @@ class MorbidityModel(nn.Module):
         for i, param in enumerate(list(New_classification_Head.parameters())):
             param.requires_grad = True
 
+        # (AIFORCOVID) MORBIDITY HEAD
         change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
 
-        start_counter_seq = 0
-        # Freeze Backbone
-        layers_seq_to_freeze = np.ceil(
-            len([module for module in list(self.backbone.modules())[1:] if isinstance(module, nn.Sequential)]) / 5)
-        for module in list(self.backbone.modules())[1:]:
-            print('ANALIZE THIS: ', module.__class__)
-            if isinstance(module, nn.Sequential):
-                start_counter_seq += 1
-                print('***** FREEZING *****: SEQ layer: ', module.__class__)
+        if self.config['model']['freezing']:
+            start_counter_seq = 0
+            # Freeze Backbone
+            layers_seq_to_freeze = np.ceil(
+                len([module for module in list(self.backbone.modules())[1:] if isinstance(module, nn.Sequential)]) / 5)
+            for module in list(self.backbone.modules())[1:]:
+                print('ANALIZE THIS: ', module.__class__)
+                if isinstance(module, nn.Sequential):
+                    start_counter_seq += 1
+                    print('***** FREEZING *****: SEQ layer: ', module.__class__)
+                    for i, param in enumerate(list(module.parameters())):
+                        param.requires_grad = False
+
+                print('***** FREEZING *****: SING layer: ', module.__class__)
                 for i, param in enumerate(list(module.parameters())):
                     param.requires_grad = False
 
-            print('***** FREEZING *****: SING layer: ', module.__class__)
-            for i, param in enumerate(list(module.parameters())):
-                param.requires_grad = False
-
-            if start_counter_seq == layers_seq_to_freeze:
-                break
+                if start_counter_seq == layers_seq_to_freeze:
+                    break
 
     def forward(self, x):
         x = self.backbone(x)
         return x
 
-        # (AIFORCOVID) MORBIDITY HEAD
+
 
     def freeze_backbone(self):
         for param in self.backbone.parameters():

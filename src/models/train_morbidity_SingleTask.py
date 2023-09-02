@@ -56,9 +56,12 @@ def main():
     Masked = '_LungMask' if data_cfg['preprocess']['masked'] else '_Entire'
     bbox_resize = '_LungBbox' if data_cfg['preprocess']['bbox_resize'] else '_Entire' if cfg['data']['modes']['img']['bbox_resize'] else ''
     softmax = '_Softmax' if cfg['model']['softmax'] else ''
+    freezing = '_unfreeze_' if not cfg['model']['freezing'] else ''
+    warming = f'_warmup_' if cfg['trainer']['warmup_epochs'] != 0 else ''
+    loss = f'_loss_{cfg["trainer"]["loss"]}' if cfg['trainer']['loss'].lower() != 'mse' else ''
 
     # Experiment name
-    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + Drop + softmax + CLAHE + Filter + Clip + Masked + bbox_resize
+    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + warming + loss + Drop + softmax + CLAHE + Filter + Clip + Masked + bbox_resize + freezing
     print(' ----------| Experiment name: ', exp_name)
 
     # Device
@@ -177,7 +180,14 @@ def main():
         model = model.to(device)
 
         # Loss function
-        criterion = nn.MSELoss().to(device)
+        if cfg['trainer']['loss'].lower() == 'mse':
+            criterion = nn.MSELoss().to(device)
+        elif cfg['trainer']['loss'].lower() == 'bce' and not softmax:
+            criterion = nn.BCEWithLogitsLoss().to(device)
+        elif cfg['trainer']['loss'].lower() == 'bce':
+            criterion = nn.BCELoss().to(device)
+
+
         # Optimizer
         optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
         # LR Scheduler

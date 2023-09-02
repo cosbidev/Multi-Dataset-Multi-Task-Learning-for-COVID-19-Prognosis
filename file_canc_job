@@ -1,153 +1,96 @@
-scancel 1215827
-scancel 1215868
-scancel 1215918
-scancel 1215969
-scancel 1215971
-scancel 1215973
-scancel 1215974
-scancel 1215975
-scancel 1215976
-scancel 1216017
-scancel 1215828
-scancel 1215829
-scancel 1215831
-scancel 1215877
-scancel 1215832
-scancel 1215833
-scancel 1215835
-scancel 1215836
-scancel 1215837
-scancel 1215839
-scancel 1215840
-scancel 1215841
-scancel 1215843
-scancel 1215844
-scancel 1215845
-scancel 1215847
-scancel 1215848
-scancel 1215849
-scancel 1215851
-scancel 1215879
-scancel 1215881
-scancel 1215852
-scancel 1215853
-scancel 1215855
-scancel 1215856
-scancel 1215857
-scancel 1215859
-scancel 1215860
-scancel 1215862
-scancel 1215866
-scancel 1215870
-scancel 1215883
-scancel 1215885
-scancel 1215887
-scancel 1215889
-scancel 1215890
-scancel 1215891
-scancel 1215892
-scancel 1215893
-scancel 1215894
-scancel 1215895
-scancel 1215897
-scancel 1215898
-scancel 1215899
-scancel 1215900
-scancel 1215901
-scancel 1215902
-scancel 1215903
-scancel 1215905
-scancel 1215906
-scancel 1215907
-scancel 1215908
-scancel 1215909
-scancel 1215910
-scancel 1215911
-scancel 1215913
-scancel 1215914
-scancel 1215915
-scancel 1215916
-scancel 1215917
-scancel 1215925
-scancel 1215927
-scancel 1215929
-scancel 1215930
-scancel 1215931
-scancel 1215932
-scancel 1215933
-scancel 1215934
-scancel 1215935
-scancel 1215937
-scancel 1215938
-scancel 1215939
-scancel 1215940
-scancel 1215941
-scancel 1215942
-scancel 1215943
-scancel 1215945
-scancel 1215946
-scancel 1215947
-scancel 1215948
-scancel 1215949
-scancel 1215950
-scancel 1215951
-scancel 1215953
-scancel 1215955
-scancel 1215956
-scancel 1215957
-scancel 1215961
-scancel 1215963
-scancel 1215965
-scancel 1215977
-scancel 1215978
-scancel 1215979
-scancel 1215980
-scancel 1215981
-scancel 1215982
-scancel 1215983
-scancel 1215984
-scancel 1215985
-scancel 1215986
-scancel 1215987
-scancel 1215988
-scancel 1215989
-scancel 1215994
-scancel 1215995
-scancel 1215996
-scancel 1216024
-scancel 1216025
-scancel 1216026
-scancel 1216028
-scancel 1216029
-scancel 1216030
-scancel 1215997
-scancel 1215998
-scancel 1215999
-scancel 1216000
-scancel 1216001
-scancel 1216002
-scancel 1216003
-scancel 1216004
-scancel 1216005
-scancel 1216006
-scancel 1216007
-scancel 1216008
-scancel 1216009
-scancel 1216010
-scancel 1216011
-scancel 1216012
-scancel 1216013
-scancel 1216014
-scancel 1216015
-scancel 1216016
-scancel 1216023
+1298519     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-13
+1298520     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-13
+1298521     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-13
+1298522     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-13
+1298523     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-14
+1298524     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-14
+1298525     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-14
+1298526     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-14
+1298527     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-15
+1298528     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-15
+1298529     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-15
+1298530     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis7-15
+1298531     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-01
+1298532     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-02
+1298533     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-02
+1298534     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-02
+1298535     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-02
+1298536     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-03
+1298537     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-03
+1298538     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-03
+1298539     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-03
+1298540     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-04
+1298541     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-04
+1298542     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-04
+1298543     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-04
+1298544     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-05
+1298545     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-05
+1298546     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-05
+1298547     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-05
+1298548     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-06
+1298549     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-06
+1298550     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-06
+1298551     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-06
+1298552     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-07
+1298553     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-07
+1298554     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-07
+1298555     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-07
+1298556     alvis   train_severity.sh soda naiss2023-5-274  R 2023-08-28T17:40:27 5-22:59:45     1   16     gpu:A40:1 alvis9-08
+scancel 1298557
+scancel 1298558
+scancel 1298559
+scancel 1298560
+scancel 1298561
+scancel 1298562
+scancel 1298563
+scancel 1298564
+scancel 1298565
+scancel 1298566
+scancel 1298567
+scancel 1298568
+scancel 1298569
+scancel 1298570
+scancel 1298571
+scancel 1298572
+scancel 1298573
+scancel 1298574
+scancel 1298575
+scancel 1298576
 
-
-
-
-scancel 1223752
-scancel 1223753
-scancel 1223754
-scancel 1223755
-scancel 1223756
-scancel 1223757
+scancel 1298519
+scancel 1298520
+scancel 1298521
+scancel 1298522
+scancel 1298523
+scancel 1298524
+scancel 1298525
+scancel 1298526
+scancel 1298528
+scancel 1298529
+scancel 1298530
+scancel 1298531
+scancel 1298532
+scancel 1298534
+scancel 1298535
+scancel 1298536
+scancel 1298537
+scancel 1298538
+scancel 1298539
+scancel 1298540
+scancel 1298541
+scancel 1298542
+scancel 1298543
+scancel 1298544
+scancel 1298545
+scancel 1298546
+scancel 1298547
+scancel 1298548
+scancel 1298549
+scancel 1298550
+scancel 1298551
+scancel 1298552
+scancel 1298553
+scancel 1298554
+scancel 1298555
+scancel 1298577
+scancel 1298578

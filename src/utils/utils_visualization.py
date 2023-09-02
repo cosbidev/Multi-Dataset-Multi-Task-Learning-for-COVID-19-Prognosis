@@ -37,7 +37,7 @@ def plot_regression(history, plot_training_dir):
     plt.title('Training and Validation Losses')
     plt.savefig(os.path.join(plot_training_dir, "Loss"))
     plt.close()
-    # Training results
+    """    # Training results
     metrics_train_x_epochs = history['train_metrics']
     metrics_val_x_epochs = history['val_metrics']
 
@@ -134,7 +134,7 @@ def plot_regression(history, plot_training_dir):
         plt.suptitle(f'{dictionary_of_name[index]} on Global Scores, Analysis over Epochs', color = 'r'    )
         plt.legend()
         plt.savefig(os.path.join(plot_training_dir, f"{index}_global"))
-        plt.close()
+        plt.close()"""
 def plot_training(history, plot_training_dir):
     # Training results Loss function
     if 'train_loss' in history.columns and 'val_loss' in history.columns:

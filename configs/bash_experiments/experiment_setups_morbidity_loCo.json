@@ -1,12 +1,12 @@
 [
   {
-    "config_file" : "afc_config_singletask_Masked_loCo_softmax.yaml",
+    "config_file" : "afc_config_singletask_Masked_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
     "models": "all"
   },
   {
-    "config_file" : "afc_config_singletask_loCo_softmax.yaml",
+    "config_file" : "afc_config_singletask_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
     "models": "all"

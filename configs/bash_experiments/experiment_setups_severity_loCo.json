@@ -3,6 +3,12 @@
     "config_file" : "bx_config_singletask_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "["mnasnet0_5","mnasnet1_0"]"
+    "models": "all"
+  },
+  {
+    "config_file" : "bx_config_singletask_Masked_loCo.yaml",
+    "name" : "loCo",
+    "fold" : "loCo",
+    "models": "all"
   }
 ]

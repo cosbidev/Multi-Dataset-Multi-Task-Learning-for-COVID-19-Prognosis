@@ -45,8 +45,6 @@ parser.add_argument("--model_names", help="model_name", default=
     "vgg11_bn",
     "densenet169",
     "wide_resnet50_2",
-    "mnasnet0_5",
-    "mnasnet1_0" ,
     "vgg11",
     "squeezenet1_0",
     "squeezenet1_1",
@@ -56,9 +54,7 @@ parser.add_argument("--model_names", help="model_name", default=
     "vgg16_bn",
     "vgg13_bn",
     "vgg13",
-    "resnet18",
-    "resnet34",
-    "resnet50",
+
     "resnet101",
     "resnet152",
     "googlenet",
@@ -67,6 +63,11 @@ parser.add_argument("--model_names", help="model_name", default=
     "resnext50_32x4d",
     "wide_resnet50_2",
 ])
+
+"""    "resnet18",
+    "resnet34",
+    "resnet50",
+"""
 
 
 
@@ -78,7 +79,6 @@ config_selector = {
     {
         '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
         'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
-        '10': '../../configs/bash_experiments/experiment_setups_morbidity_10.json'
     },
     'severity':
         {
@@ -97,6 +97,7 @@ if __name__ == "__main__":
         json_data = data_file.read()
 
     experiment_list = json.loads(json_data)
+    print(experiment_list)
     processes = []  # List to store the subprocess instances
 
 

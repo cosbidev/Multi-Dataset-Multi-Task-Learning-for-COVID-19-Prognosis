@@ -61,8 +61,12 @@ def main():
     Masked = '_LungMask' if data_cfg['preprocess']['masked'] else '_Entire'
     bbox_resize = '_LungBbox' if data_cfg['preprocess']['bbox_resize'] else '_Entire' if cfg['data']['modes']['img']['bbox_resize'] else ''
     regression = '_regression-' + cfg['model']['regression_type']
+    freezing = '_unfreeze_' if cfg['model']['freezing'] else ''
+    warming = f'_warmup_' if cfg['trainer']['warmup_epochs'] != 0 else ''
+    loss = f'_loss_{cfg["trainer"]["loss"]}' if cfg['trainer']['loss'].lower() != 'mse' else ''
+
     # Experiment name
-    exp_name = cfg['exp_name'] + regression + CV + Batch + LearningRate + Drop + CLAHE + Filter + Clip + Masked + bbox_resize
+    exp_name = cfg['exp_name'] + regression + CV + Batch + LearningRate + warming + loss + Drop + CLAHE + Filter + Clip + Masked + bbox_resize + freezing
 
 
 
@@ -101,7 +105,7 @@ def main():
               "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
               "resnet18", "resnet34", "resnet50", "resnet101", "resnet152",
               "densenet121", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
-              "shufflenet_v2_x1_0",  "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
+              "shufflenet_v2_x1_0",  "resnext50_32x4d", "wide_resnet50_2"]
     model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name) # folder to save model
     print(' ----------| Model directory: ', model_dir)
 
@@ -145,7 +149,7 @@ def main():
         mkdir(plot_test_fold_dir)
 
 
-        # Data Loaders for MORBIDITY TASK
+        # Data Loaders for SEVERITY TASK
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
         if is_debug():
@@ -175,7 +179,8 @@ def main():
         model = model.to(device)
 
         # Loss function
-        criterion = nn.MSELoss().to(device)
+        if cfg['trainer']['loss'].lower() == 'mse':
+            criterion = nn.MSELoss().to(device)
         # Optimizer
         optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
         # LR Scheduler
