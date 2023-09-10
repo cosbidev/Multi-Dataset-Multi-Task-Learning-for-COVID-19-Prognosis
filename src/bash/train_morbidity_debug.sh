@@ -26,7 +26,7 @@ processed="data/processed"
 input_data="data/AIforCOVID/processed/box_data_AXF123.xlsx"
 config="configs/afc_cv5_debug.yaml"
 model="shufflenet_v2_x0_5"
-id_exp="100"
+id_exp="99"
 
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM

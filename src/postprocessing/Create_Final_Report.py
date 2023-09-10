@@ -5,13 +5,19 @@ import pandas as pd
 def reportCreation(modality = 'Morbidity'):
 
     modality_set = {"Morbidity": 1, "Severity":0 }
-    directory_id = 1
-    extension_ = 'resnets'
+    directory_id = 5
+
+    v_ = 'all'
+
+    versions = {'R':(['resnet18', 'resnet34', 'resnet50'], 'resnets18-34-50'), 'all' :([], 'all')}
 
     if modality_set[modality]:
         for CV in ['loCo', '5']:
 
             experiment_folder = f"reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}"
+            if not os.path.exists(experiment_folder):
+                continue
+
             Experiment_folders = [dir for dir in os.scandir(experiment_folder) if os.path.isdir(dir)]
 
             for Experiment_folder in Experiment_folders:
@@ -27,8 +33,9 @@ def reportCreation(modality = 'Morbidity'):
                 print('Experiment_folder: ', Experiment_folder)
 
                 for Model_folder in Models_folders:
-                    if extension_.__len__() > 0:
-                        if Model_folder not in ['resnet18', 'resnet34', 'resnet50']:
+                    version = versions[v_]
+                    if version[0].__len__() > 0:
+                        if Model_folder not in version[0]:
                             continue
                     print('Model_folder: ', Model_folder)
 
@@ -55,7 +62,7 @@ def reportCreation(modality = 'Morbidity'):
                 save_name = Experiment_folder.name.split('singletask')[-1]
 
                 df_resume_experiments.to_excel(
-                    os.path.join(f'reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}', f'models_report_{CV}_resume_exp_{save_name}_{extension_}.xlsx'))
+                    os.path.join(f'reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}', f'models_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
 
                 print('here')
 
@@ -78,10 +85,12 @@ def reportCreation(modality = 'Morbidity'):
 
 
 
+            experiment_folder = f"reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}"
+            if not os.path.exists(experiment_folder):
+                continue
+            Experiment_folders = [dir for dir in os.scandir(experiment_folder) if os.path.isdir(dir)]
 
-
-
-            for Experiment_folder, type_exp in zip(Experiment_folders, ['LungMask', 'Entire']):
+            for Experiment_folder in Experiment_folders:
 
                 Models_folders = os.listdir(Experiment_folder)
 
@@ -95,14 +104,14 @@ def reportCreation(modality = 'Morbidity'):
 
                 for Model_folder in Models_folders:
 
+                    version = versions[v_]
+                    if version[0].__len__() > 0:
+                        if Model_folder not in version[0]:
+                            continue
+
                     print('Model_folder: ', Model_folder)
 
                     model_report_dir = os.path.join(Experiment_folder, Model_folder)
-
-
-
-
-
 
 
                     file_report = os.path.join(model_report_dir, f'report_{CV}.xlsx')
@@ -140,16 +149,23 @@ def reportCreation(modality = 'Morbidity'):
                         df_R2_results.dropna(inplace=True)
 
 
+                save_name = Experiment_folder.name.split('singletask')[-1]
+
+                df_resume_experiments.to_excel(
+                    os.path.join(f'reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}', f'models_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
+
+
+
                 df_CC_results.to_excel(
-                    os.path.join(f'reports/BX/{CV}', f'models_CC_report_{CV}_resume_exp_{type_exp}.xlsx'))
+                    os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_CC_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
                 df_SD_results.to_excel(
-                    os.path.join(f'reports/BX/{CV}', f'models_SD_report_{CV}_resume_exp_{type_exp}.xlsx'))
+                    os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_SD_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
                 df_MSE_results.to_excel(
-                    os.path.join(f'reports/BX/{CV}', f'models_MSE_report_{CV}_resume_exp_{type_exp}.xlsx'))
+                    os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_MSE_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
                 df_L1_results.to_excel(
-                    os.path.join(f'reports/BX/{CV}', f'models_L1_report_{CV}_resume_exp_{type_exp}.xlsx'))
+                    os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_L1_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
                 df_R2_results.to_excel(
-                    os.path.join(f'reports/BX/{CV}', f'models_R2_report_{CV}_resume_exp_{type_exp}.xlsx'))
+                    os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_R2_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
 
 
 

@@ -17,7 +17,43 @@ from scipy.ndimage.interpolation import map_coordinates
 from .utils_images import get_box, get_mask, normalize, PreprocessDicom, find_bboxes
 
 
+def create_combined_folds(cv_option, morbidity_cfg, severity_cfg, steps=None):
+    if steps is None:
+        steps = ['train', 'val', 'test']
+    else:
+        # Check steps is a list
+        assert isinstance(steps, list)
+    # Check cv_option is valid
+    assert cv_option in ['loCo6', 'loCo18', 5]
+    # Check morbidity_cfg and severity_cfg are dictionaries
+    if cv_option == 'loCo6':
+        pass
+    elif cv_option == 'loCo18':
+        if [int(value) for value in os.listdir(cfg['data']['fold_dir'])]:
+            pass
+        pass
+    elif cv_option == 5:
 
+        # Data Loaders for MORBIDITY TASK
+        fold_grid = {fold: {} for fold in list(range(cv_option))}
+        for fold in fold_grid.keys():
+
+            fold_data_combined = {step: None for step in steps}
+            for step in steps:
+                data_morbidity = pd.read_csv(os.path.join(morbidity_cfg['img']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ")
+                data_morbidity.loc[:, 'dataset_class'] = np.array(['AFC' for i in range(data_morbidity.shape[0])])
+
+                data_severity = (pd.read_csv(os.path.join(severity_cfg['img']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ")
+                                 .drop(columns=['label_dim']).rename(columns={'scores': 'label'}))
+                data_severity.loc[:, 'dataset_class'] = np.array(['BX' for i in range(data_severity.shape[0])])
+
+                combined_dataset = pd.concat([data_morbidity, data_severity], axis=0).reset_index(drop=True)
+                fold_data_combined[step] = combined_dataset
+
+            fold_grid[fold] = fold_data_combined
+        return fold_grid
+
+    pass
 
 
 def get_img_loader(loader_name):
@@ -30,7 +66,7 @@ def get_img_loader(loader_name):
 
 
 def seed_worker(worker_id):
-    worker_seed = torch.initial_seed() % 2**32
+    worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
@@ -76,12 +112,17 @@ class XRayResizer(object):
         else:
             raise Exception("Unknown engine, Must be skimage (default) or cv2.")
 
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+
 def rotate(l, n):
     return l[n:] + l[:n]
+
+
 class XRayCenterCrop(object):
 
     def crop_center(self, img):
@@ -93,6 +134,7 @@ class XRayCenterCrop(object):
 
     def __call__(self, img):
         return self.crop_center(img)
+
 
 def normalize_XRayVision(img, maxval, reshape=False):
     """Scales images to be roughly [-1024 1024]."""
@@ -162,7 +204,7 @@ def clipped_zoom(img, zoom_factor):
         img : Image array
         zoom_factor : amount of zoom as a ratio (0 to Inf)
     """
-    height, width = img.shape[:2] # It's also the final desired shape
+    height, width = img.shape[:2]  # It's also the final desired shape
     new_height, new_width = int(height * zoom_factor), int(width * zoom_factor)
 
     # Crop only the part that will remain in the result (more efficient)
@@ -192,14 +234,14 @@ def augmentation(img):
     r = random.randint(0, 100)
     if r > 70:
         shift_perc = 0.1
-        r1 = random.randint(-int(shift_perc*img.shape[0]), int(shift_perc*img.shape[0]))
-        r2 = random.randint(-int(shift_perc*img.shape[1]), int(shift_perc*img.shape[1]))
+        r1 = random.randint(-int(shift_perc * img.shape[0]), int(shift_perc * img.shape[0]))
+        r2 = random.randint(-int(shift_perc * img.shape[1]), int(shift_perc * img.shape[1]))
         img = shift(img, [r1, r2], mode='nearest')
     # zoom
     r = random.randint(0, 100)
     if r > 70:
         zoom_perc = 0.1
-        zoom_factor = random.uniform(1-zoom_perc, 1+zoom_perc)
+        zoom_factor = random.uniform(1 - zoom_perc, 1 + zoom_perc)
         img = clipped_zoom(img, zoom_factor=zoom_factor)
     # flip
     r = random.randint(0, 100)
@@ -235,19 +277,19 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
 
     """
     # Img
+
     img, photometric_interpretation = load_img(img_path)
-    min_val, max_val = img.min(), img.max()
+
     # Pathometric Interpretation
     if photometric_interpretation == 'MONOCHROME1':
-        img = np.interp(img, (min_val, max_val), (max_val, min_val))
         min_val, max_val = img.min(), img.max()
+        img = np.interp(img, (min_val, max_val), (max_val, min_val))
+
     # To Grayscale
     if img.ndim > 2:
         img = img.mean(axis=2)
 
 
-    # Normalize
-    img = normalize(img, min_val=min_val, max_val=max_val)
     # CLAHE / MEDIAN FILTER / CLIPPING
     img = PreprocessDicom(img, clip_limit=0.01, med_filt=3, **kwargs)
     # Filter Mask
@@ -258,29 +300,33 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, b
         mask, _ = load_img(mask_path)
 
     if masked:
-
         img = get_mask(img, mask)
 
     # Select Box Area
     if bbox_resize:
         try:
-            box_tot, _,_ = find_bboxes(mask)
+
+            box_tot, _, _ = find_bboxes(mask)
             img = get_box(img, box_tot, masked=masked)
+
         except IndexError:
             img = img
 
+
+    min_val, max_val = img.min(), img.max()
+    # Normalize
+    img = normalize(img, min_val=min_val, max_val=max_val)
     # Resize
     img = cv2.resize(img, (img_dim, img_dim))
-
 
     # Augmentation
     if step == "train":
         img = augmentation(img)
 
     # 3 channels
-    img = np.stack((img, img, img), axis=0)
+    img = np.stack((img,)*3, axis=-1)
     # To Tensor
-    img = torch.Tensor(img)
+    img = torch.Tensor(img).reshape((3, img_dim, img_dim))
     return img
 
 
@@ -315,17 +361,19 @@ def loader_XRayVision(img_path, img_dim, mask_path=None, box=None, clahe=False, 
 
 class DatasetImgAFC(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch Dataloader to trait images'
+
     def __init__(self, data, classes, cfg, step, one_hot=True):
         'Initialization'
         self.cfg = cfg
         self.step = step
         self.data = data
-        self.data = self.drop_patient([ 'P_3_391', 'P_3_377','P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm',
-                                        'P_3_208.dcm'])
+        self.data = self.drop_patient(['P_3_391', 'P_3_377', 'P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm',
+                                       'P_3_208.dcm'])
+
         self.shuffle()
         self.one_hot = one_hot
         self.classes = classes
-        self.one_hot_list =[[1,0], [0,1]]
+        self.one_hot_list = [[1, 0], [0, 1]]
         self.class_to_one_hot = {c: self.one_hot_list[i] for i, c in enumerate(sorted(classes))}
         self.class_to_idx = {c: i for i, c in enumerate(sorted(classes))}
         self.idx_to_class = {i: c for c, i in self.class_to_idx.items()}
@@ -346,8 +394,10 @@ class DatasetImgAFC(torch.utils.data.Dataset):
             self.boxes = None
         self.img_dim = cfg['img_dim']
         self.loader = get_img_loader(cfg['loader_name'])
+
     def shuffle(self):
         self.data = self.data.sample(frac=1).reset_index(drop=True)
+
     def drop_patient(self, patient_ids):
         self.data = self.data[~self.data['img'].isin(patient_ids)]
         self.data = self.data.reset_index(drop=True)
@@ -374,20 +424,17 @@ class DatasetImgAFC(torch.utils.data.Dataset):
         # Load data and get label
         img_path = self.img_paths[id]
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['preprocess'])
-        y = row.label # label
-
+        y = row.label  # label
 
         if self.one_hot:
             y = torch.Tensor(self.class_to_one_hot[y])
 
-
         return x, y, id
-
-
 
 
 class DatasetImgBX(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch Dataloader to trait images'
+
     def __init__(self, data, classes, cfg, step):
         'Initialization'
         self.cfg = cfg
@@ -414,11 +461,11 @@ class DatasetImgBX(torch.utils.data.Dataset):
         else:
             self.boxes = None
 
-
         # BRIXIA SCORES DICTIONARY
         self.brixia_scores = self.create_BX_scores_table()
         self.img_dim = cfg['img_dim']
         self.loader = get_img_loader(cfg['loader_name'])
+
     def create_BX_scores_table(self):
         """
         Create a table with the brixia scores for each patient.
@@ -441,18 +488,17 @@ class DatasetImgBX(torch.utils.data.Dataset):
             # TOTAL SCORES:
             score_total = sum(list(score_tot.values()))
 
-
             # Store scores in the table
             BX_Scores_table.loc[patient_data[1]['img']][columns_scores] = list(score_tot.values())
             BX_Scores_table.loc[patient_data[1]['img']]['BX_R'] = score_right
             BX_Scores_table.loc[patient_data[1]['img']]['BX_L'] = score_left
             BX_Scores_table.loc[patient_data[1]['img']]['BX_Total'] = score_total
 
-
         return BX_Scores_table
 
     def shuffle(self):
         self.data = self.data.sample(frac=1).reset_index(drop=True)
+
     def drop_patient(self, patient_ids):
         self.data = self.data[~self.data['img'].isin(patient_ids)]
         self.data = self.data.reset_index(drop=True)
@@ -479,16 +525,198 @@ class DatasetImgBX(torch.utils.data.Dataset):
         # Load data and get label
         img_path = self.img_paths[id]
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['preprocess'])
-        y = self.brixia_scores.loc[id] # scores
+        y = self.brixia_scores.loc[id]
+
         return x, torch.Tensor(y.array), img_path
+
+
+
+
+
+
+class MultiTaskDataset(DatasetImgBX, DatasetImgAFC):
+    def __init__(self, data, cfg_morbidity, cfg_severity, step, cfg, one_hot=True):
+
+        self.cfg = cfg
+        self.step = step
+        self.data = data
+
+        self.__s_class_to_idx = None
+        self.m_idx_to_class = None
+        self.__m_class_to_one_hot = None
+        self.__m_class_to_idx = None
+        self.__s_class_to_one_hot = None
+        self.s_class_to_idx = None
+
+        self.morbidity_data = self.data[self.data['dataset_class'] == 'AFC']
+        self.severity_data = self.data[self.data['dataset_class'] == 'BX']
+
+
+        self.__cfg_morbidity = cfg_morbidity
+        self.__cfg_severity = cfg_severity
+        self.__morbidity_classes = cfg_morbidity['classes']
+        self.__severity_classes = cfg_severity['classes']
+
+        self.__one_hot = one_hot
+        self.loader = get_img_loader(cfg_morbidity['img']['loader_name'])
+        self.img_dim = self.cfg['data']['img_dim']
+        # Process Datasets
+        self.__m_masks, self.__m_boxes, self.__m_box_R, self.__m_box_L, self.__m_img_paths = self.process_morbidity()
+
+        self.__s_masks, self.__s_boxes, self.__s_box_R, self.__s_box_L, self.__s_img_paths = self.process_severity()
+
+        self.data = pd.concat([self.morbidity_data, self.severity_data], axis=0).reset_index(drop=True)
+        self.data = self._shuffle(data=self.data)
+
+        self.class_to_idx = {**self.__m_class_to_idx, **self.__s_class_to_idx}
+        self.masks = {**self.__m_masks, **self.__s_masks}
+        self.boxes = {**self.__m_boxes, **self.__s_boxes}
+        self.box_R = {**self.__m_box_R, **self.__s_box_R}
+        self.box_L = {**self.__m_box_L, **self.__s_box_L}
+        self.img_paths = {**self.__m_img_paths, **self.__s_img_paths}
+
+        pass
+
+    @staticmethod
+    def _shuffle(data):
+        data = data.sample(frac=1).reset_index(drop=True)
+        return data
+
+    @staticmethod
+    def _drop_patient(patient_ids, data):
+        data = data[~data['img'].isin(patient_ids)]
+        data = data.reset_index(drop=True)
+        return data
+
+    def create_BX_scores_table(self):
+        """
+        Create a table with the brixia scores for each patient.
+        Returns:
+            BX_Scores_table: table with the brixia scores for each patient.
+        """
+
+        # Create table empty
+        data = self.severity_data
+        BX_Scores_table = pd.DataFrame(index=data['img'], columns=['A', 'B', 'C', 'D', 'E', 'F', 'BX_R', 'BX_L', 'BX_Total'])
+        columns_scores = list(BX_Scores_table.columns)[:6]
+
+        for patient_data in data.iterrows():
+            brixia_score = patient_data[1]['label'].replace('[', '').replace(']', '')
+            score_tot = {zone: 0 for i, zone in zip(range(self.__severity_classes.__len__()), columns_scores)}
+            for j, score_bx in enumerate(brixia_score):
+                score_tot[columns_scores[j]] = int(score_bx)
+            # RIGHT LUNG SCORES:
+            score_right = sum(list(score_tot.values())[0:3])
+            # LEFT LUNG SCORES:
+            score_left = sum(list(score_tot.values())[3:6])
+            # TOTAL SCORES:
+            score_total = sum(list(score_tot.values()))
+
+            # Store scores in the table
+            BX_Scores_table.loc[patient_data[1]['img']][columns_scores] = list(score_tot.values())
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_R'] = score_right
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_L'] = score_left
+            BX_Scores_table.loc[patient_data[1]['img']]['BX_Total'] = score_total
+
+        return BX_Scores_table
+
+    def process_morbidity(self):
+        self.morbidity_data = self._drop_patient(data=self.morbidity_data,
+                                                 patient_ids=['P_3_391', 'P_3_377', 'P_3_20', 'P_3_108', 'P_1_16', 'P_3_341', 'P_3_411.dcm',
+                                                                'P_3_208.dcm'])
+
+        cfg = self.__cfg_morbidity['img']
+
+        self.one_hot_list = [[1, 0], [0, 1]]
+
+        self.__m_class_to_one_hot = {c: self.one_hot_list[i] for i, c in enumerate(sorted(self.__morbidity_classes))}
+        self.__m_class_to_idx = {c: i for i, c in enumerate(sorted(self.__morbidity_classes))}
+        self.m_idx_to_class = {i: c for c, i in self.__m_class_to_idx.items()}
+
+        # Mask (to select only the lungs pixels)
+        if cfg['mask_dir']:
+            masks = {id_patient: os.path.join(cfg['mask_dir'], '%s.tif' % id_patient) for id_patient in self.morbidity_data['img']}
+        else:
+            masks = None
+        # Box (to select only the box containing the lungs)
+        if cfg['box_file']:
+            box_data = pd.read_excel(cfg['box_file'], index_col="img", dtype=list)
+            boxes = {row[0]: eval(row[1]["all"]) for row in box_data.iterrows()}
+            box_R = {row[0]: eval(row[1]["dx"]) if isinstance(row[1]["dx"], str) else [] for row in
+                     box_data.iterrows()}
+            box_L = {row[0]: eval(row[1]["sx"]) if isinstance(row[1]["sx"], str) else [] for row in box_data.iterrows()}
+            img_paths = {row[0]: row[1]["img_path"] for row in box_data.iterrows()}
+        else:
+            boxes = None
+
+        return masks, boxes, box_R, box_L, img_paths
+
+    def process_severity(self):
+
+        cfg = self.__cfg_severity['img']
+        self.__s_class_to_idx = {c: i for i, c in enumerate(sorted(self.__severity_classes))}
+        self.s_idx_to_class = {i: c for c, i in self.__s_class_to_idx.items()}
+        # Mask (to select only the lungs pixels)
+        if cfg['mask_dir']:
+            masks = {id_patient: os.path.join(cfg['mask_dir'], '%s.tiff' % id_patient) for id_patient in self.severity_data['img']}
+        else:
+            masks = None
+        # Box (to select only the box containing the lungs)
+        if cfg['box_file']:
+            box_data = pd.read_excel(cfg['box_file'], index_col="img", dtype=list)
+            boxes = {row[0]: eval(row[1]["all"]) for row in box_data.iterrows()}
+            box_R = {row[0]: eval(row[1]["dx"]) if isinstance(row[1]["dx"], str) else [] for row in
+                     box_data.iterrows()}
+            box_L = {row[0]: eval(row[1]["sx"]) if isinstance(row[1]["sx"], str) else [] for row in box_data.iterrows()}
+            img_paths = {row[0]: os.path.join(cfg['img_dir'], 'dicom_clean', str(row[0]) + '.dcm') for row in box_data.iterrows()}
+        else:
+            boxes = None
+
+        # BRIXIA SCORES DICTIONARY
+        self.brixia_scores = self.create_BX_scores_table()
+        return masks, boxes, box_R, box_L, img_paths
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.data)
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+        # Select sample
+        row = self.data.iloc[index]
+        id = row.img
+        if self.masks:
+            mask_path = self.masks[id]
+        else:
+            mask_path = None
+        # load box
+        if self.boxes:
+            box = self.boxes[id]
+        else:
+            box = None
+        # Load data and get label
+        img_path = self.img_paths[id]
+        x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, **self.cfg['data']['preprocess'])
+
+        if row.dataset_class == 'BX':
+            y = self.brixia_scores.loc[id].array  # scores
+            id = str(id)
+        elif row.dataset_class == 'AFC':
+
+            y = self.__m_class_to_one_hot[row.label] + [-999 for i in range(7)]  # label + scores
+        y = torch.Tensor(y)
+
+        return x, y, id, row.dataset_class
+
 
 
 class DatasetClinical(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
+
     def __init__(self, data, classes, cfg_data, step):
         'Initialization'
         self.step = step  # train valid or test
-        self.clinical_data = pd.read_csv(cfg_data['data_file'], index_col=0) # clinical data
+        self.clinical_data = pd.read_csv(cfg_data['data_file'], index_col=0)  # clinical data
         self.data = data  # patient_id per fold with associated class
         self.classes = classes
         self.class_to_idx = {c: i for i, c in enumerate(sorted(classes))}
@@ -511,6 +739,7 @@ class DatasetClinical(torch.utils.data.Dataset):
 
 class MultimodalDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
+
     def __init__(self, dataset_mode_1, dataset_mode_2, classes):
         'Initialization'
         self.dataset_mode_1 = dataset_mode_1
@@ -532,9 +761,10 @@ class MultimodalDataset(torch.utils.data.Dataset):
 
 
 class FeatureDataset(torch.utils.data.Dataset):
-    'Characterizes a dataset for PyTorch'
+    """Characterizes a dataset for PyTorch"""
+
     def __init__(self, data, classes, features_file, step):
-        'Initialization'
+        """Initialization"""
         self.step = step  # train valid or test
         self.features_data = pd.read_csv(features_file, index_col=0)
         self.data = data  # patient_id per fold with associated class
@@ -543,7 +773,7 @@ class FeatureDataset(torch.utils.data.Dataset):
         self.idx_to_class = {i: c for c, i in self.class_to_idx.items()}
 
     def __len__(self):
-        'Denotes the total number of samples'
+        """Denotes the total number of samples"""
         return len(self.data)
 
     def __getitem__(self, index):
@@ -555,17 +785,19 @@ class FeatureDataset(torch.utils.data.Dataset):
         y = row.label
         return x, self.class_to_idx[y], id
 
+
 class PrototypeDataset(torch.utils.data.Dataset):
-    'Characterizes a dataset for PyTorch'
+    """Characterizes a dataset for PyTorch"""
+
     def __init__(self, data, labels, patients_id):
-        'Initialization'
+        """Initialization"""
         self.data = data  # patient_id per fold with associated class
         self.labels = labels
         self.idp = patients_id
-    def __len__(self):
-        'Denotes the total number of samples'
-        return len(self.data)
 
+    def __len__(self):
+        """Denotes the total number of samples"""
+        return len(self.data)
 
     def __getitem__(self, index):
         x = self.data[index]

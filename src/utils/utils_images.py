@@ -200,7 +200,7 @@ def get_mask(img, mask): # todo: img[~mask]
     return img * boolean_mask
 
 
-def get_box(img, box, masked=False):
+def get_box(img, box, masked=False, border_add=10):
     """
     Returns the image inside the bounding box, if the parameter masked is true the image is padded with zeros; otherwise
     it's needed to pad the image with real values from the image. The padding is done in order to have a squared image
@@ -212,9 +212,27 @@ def get_box(img, box, masked=False):
     Returns:
         the img padded
     """
+
     # BBOX parameters = [x, y, w, h]
     box = [int(b) for b in box]
     # Sides
+    if border_add == 0:
+        pass
+    else:
+        pixel_add_w = ((box[2] * border_add) // 100) // 2
+        pixel_add_h = ((box[3] * border_add) // 100) // 2
+
+        if box[0] - pixel_add_w < 0:
+            pixel_add_w = pixel_add_w - abs(box[0] - pixel_add_w)
+        if box[0] + box[2] + pixel_add_w > img.shape[1]:
+            pixel_add_w = pixel_add_w - abs(box[0] + box[2] + pixel_add_w - img.shape[1])
+        if box[1] - pixel_add_h < 0:
+            pixel_add_h = pixel_add_h - abs(box[1] - pixel_add_h)
+        if box[1] + box[3] + pixel_add_h > img.shape[0]:
+            pixel_add_h = pixel_add_h - abs(box[1] + box[3] + pixel_add_h - img.shape[0])
+
+        box = [box[0] - pixel_add_w, box[1] - pixel_add_h, box[2] + pixel_add_w, box[3] + pixel_add_h]
+
     l_w = box[2]
     l_h = box[3]
 
@@ -268,6 +286,8 @@ def get_box(img, box, masked=False):
                 return img[box[1] - left_down: , box[0]: box[0] + box[2]]
             else:
                 return img[box[1] - left_down: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
+        elif l_h == l_w:
+            return img[box[1]: box[1] + box[3], box[0]: box[0] + box[2]]
 
 
 

@@ -152,7 +152,7 @@ def update_learning_rate(optimizer, scheduler, metric=None):
     scheduler.step(float(metric))
     lr = optimizer.param_groups[0]['lr']
     print('optimizer: %.7s  --learning rate %.7f -> %.7f' % (
-    optimizer.__class__.__name__, old_lr, lr) if not old_lr == lr else 'Learning rate non modificato: %s' % (old_lr))
+        optimizer.__class__.__name__, old_lr, lr) if not old_lr == lr else 'Learning rate non modificato: %s' % (old_lr))
 
 
 def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
@@ -395,8 +395,6 @@ def train_severity(model,
                             early_stop = True
                             break
 
-        print()
-
         if early_stop:
             break
 
@@ -410,6 +408,186 @@ def train_severity(model,
 
     # Save model
     torch.save(model, os.path.join(model_dir, model_file_name))
+
+    return model, history
+
+
+def train_MultiTask(model,
+                    optimizer,
+                    scheduler,
+                    criterion,
+                    model_file_name,
+                    dataloaders,
+                    model_dir,
+                    device,
+                    num_epochs=25,
+                    max_epochs_stop=3,
+                    regression_type='area'):
+    since = time.time()
+
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_epoch_accuracy = 0.0
+
+    best_epoch = 0
+    history = {'train_loss': [],
+               'train_loss_S': [],
+               'train_loss_M': [],
+               'val_loss': [],
+               'val_loss_S': [],
+               'val_loss_M': [],
+               'train_acc': [],
+               'val_acc': []}
+
+    epochs_no_improve = 0
+    early_stop = False
+
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
+
+        # Each epoch has a training and validation phase
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()  # Set model to evaluate mode
+
+            running_loss = {'Loss_M': 0.0, 'Loss_S': 0.0, 'Loss_TOT': 0.0}
+            running_corrects = 0
+            count_AFC = 0
+            count_BX = 0
+            # Iterate over data.
+            with tqdm(total=len(dataloaders[phase].dataset), desc=f'Epoch {epoch + 1}/{num_epochs}',
+                      unit='img') as pbar:
+                for inputs, labels, file_name, dataset_class in dataloaders[phase]:
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward
+                    # Train updating of weights by gradient descent
+
+                    with torch.set_grad_enabled(phase == 'train'):
+
+                        outputs = model(inputs.float())
+                        # Outputs of the two heads
+                        Morbidity_head_outputs = outputs[0]
+                        Severity_head_outputs = outputs[1]
+
+                        labels = labels.type(torch.float32)
+                        if model.config['model']['softmax']:
+                            outputs = nn.Softmax(dim=1)(outputs)
+
+                        # Loss for multi-task
+                        losses, selectors = criterion(outputs, labels, dataset_class=dataset_class)
+
+
+
+                        # Selectors for data informations
+                        BX_selector = selectors['BX_sel']
+                        AFC_selector = selectors['AFC_sel']
+
+                        # Labels/Outputs BX
+                        labels_BX = labels[BX_selector]
+                        outputs_BX = Severity_head_outputs[BX_selector]
+                        # Labels/Outputs AFC
+                        labels_AFC = labels[AFC_selector][:, :criterion.dim_1]
+                        outputs_AFC = Morbidity_head_outputs[AFC_selector]
+
+                        # Calculate predictions and Labels fgt for the Morbidity Task:
+                        _, preds = torch.max(outputs_AFC, 1)
+                        _, labels_gt = torch.max(labels_AFC, 1)
+
+                        # Losses:
+                        loss_AFC = losses['Loss_M']
+                        loss_BX = losses['Loss_S']
+                        loss = losses['Loss_TOT']
+
+                        # Updates Counts:
+                        count_AFC += labels_AFC.size(0)
+                        count_BX += labels_BX.size(0)
+
+
+
+
+                        pbar.set_postfix(**{'Total loss (batch)': loss.item(), 'AFC loss (batch)': loss_AFC.item(), 'BX loss (batch)': loss_BX.item()})
+
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()
+
+
+                    # statistics
+
+                    running_loss['Loss_M'] += loss_AFC.item() * inputs.size(0)
+
+                    running_loss['Loss_S'] += loss_BX.item() * inputs.size(0)
+
+                    running_loss['Loss_TOT'] += loss.item() * inputs.size(0)
+
+                    running_corrects += torch.sum(preds == labels_gt.data)
+
+                    pbar.update(inputs.shape[0])
+
+            epoch_loss_tot = running_loss['Loss_TOT'] / len(dataloaders[phase].dataset)
+            epoch_loss_AFC = running_loss['Loss_M'] / count_AFC
+            epoch_loss_BX = running_loss['Loss_S'] / count_BX
+
+            if phase == 'val':
+                val_loss = epoch_loss_tot
+                update_learning_rate(optimizer=optimizer, scheduler=scheduler, metric=val_loss)
+            epoch_acc = running_corrects.double() / count_AFC
+
+            # update history
+            if phase == 'train':
+                history['train_loss'].append(epoch_loss_tot)
+                history['train_loss_S'].append(epoch_loss_BX)
+                history['train_loss_M'].append(epoch_loss_AFC)
+                history['train_acc'].append(epoch_acc)
+            else:
+                history['val_loss'].append(epoch_loss_tot)
+                history['val_loss_S'].append(epoch_loss_BX)
+                history['val_loss_M'].append(epoch_loss_AFC)
+                history['val_acc'].append(epoch_acc)
+
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss_tot, epoch_acc))
+
+            # deep copy the model
+            if epoch > model.config['trainer']['warmup_epochs']:
+                if phase == 'val':
+                    if epoch_loss_tot < best_loss:
+                        best_epoch = epoch
+                        best_epoch_accuracy = epoch_acc
+                        best_loss = epoch_loss_tot
+                        best_model_wts = copy.deepcopy(model.state_dict())
+                        epochs_no_improve = 0
+                    else:
+                        epochs_no_improve += 1
+                        # Trigger early stopping
+                        if epochs_no_improve >= max_epochs_stop:
+                            print(f'\nEarly Stopping! Total epochs: {epoch}%')
+                            early_stop = True
+                            break
+
+        if early_stop:
+            break
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    print('Best epoch: {:0f}'.format(best_epoch))
+    print('Best val Acc: {:4f}'.format(best_epoch_accuracy))
+
+    # load best model weights
+    model.load_state_dict(best_model_wts)
+
+    # Save model
+    torch.save(model, os.path.join(model_dir, model_file_name + '_{0}_.pt'.format(best_epoch)))
+
+    # Format history
+    history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
     return model, history
 
@@ -541,8 +719,6 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-
-
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
@@ -571,7 +747,9 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size).item())
         return res
-
+def evaluate_multi_task(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
+    """Measure the performance of a trained PyTorch model"""
+    pass
 
 def evaluate_regression(model, test_loader, criterion, idx_to_class, device, regression_type='area'):
     """Measure the performance of a trained PyTorch model on a regression task
@@ -666,7 +844,6 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
             predicted_labels.append(preds.data.cpu().numpy())
 
             # Iterate through each example
-
 
             for pred, true, target in zip(outputs, labels_gt, targets):
                 # Find topk accuracy
@@ -784,8 +961,6 @@ class MorbidityModel(nn.Module):
         x = self.backbone(x)
         return x
 
-
-
     def freeze_backbone(self):
         for param in self.backbone.parameters():
             pass
@@ -803,7 +978,6 @@ class SeverityModel(nn.Module):
         self.class_to_id = {c: i for i, c in enumerate(self.labels)}
         # BACKBONE
 
-
         self.softmax = nn.Softmax(dim=1)
         self.backbone, in_features = get_backbone(backbone)
         # HEAD CLASSIFICATION
@@ -816,7 +990,7 @@ class SeverityModel(nn.Module):
         else:
             New_classification_Head = nn.Sequential(OrderedDict(
                 [(
-                 'classification-Head', nn.Linear(in_features=in_features, out_features=len(self.labels), bias=True))]))
+                    'classification-Head', nn.Linear(in_features=in_features, out_features=len(self.labels), bias=True))]))
         # CHANGE HEAD
         for i, param in enumerate(list(New_classification_Head.parameters())):
             param.requires_grad = True
@@ -849,7 +1023,6 @@ class SeverityModel(nn.Module):
         return x
 
 
-
 def get_SingleTaskModel(kind='morbidity', backbone='', cfg=None, device=None, *args, **kwargs):
     if cfg['model']['task'] == 'morbidity':
         return MorbidityModel(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
@@ -857,74 +1030,259 @@ def get_SingleTaskModel(kind='morbidity', backbone='', cfg=None, device=None, *a
         return SeverityModel(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
 
 
+def get_MultiTaskModel(kind='parallel', backbone='', cfg=None, device=None, *args, **kwargs):
+    # TODO Multitask model
+    if kind == 'parallel':
+        return ParallelMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
+    if kind == 'serial':
+        return SeverityModel(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
+
+
+def MSE_loss(outputs, labels):
+
+    number =  (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) if (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) != 0 else 1
+
+    return torch.nansum((outputs - labels) ** 2) / number
+
+
+class IdentityMultiHeadLoss(torch.nn.Module):
+    def __init__(self, cfg: dict, eps: float = 1e-08):
+        super(IdentityMultiHeadLoss, self).__init__()
+        self.cfg = cfg
+        self.regression = self.cfg.model.regression_type
+        self.loss_1 = cfg.trainer.loss_1
+        self.loss_2 = cfg.trainer.loss_2
+        self.encode_dataset = {'AFC': 0, 'BX': 1}
+        self.dim_1 = 2
+        encode_bx_dim = {'area': 6, 'region': 3, 'global': 1}
+        self.dim_2 = encode_bx_dim[self.regression]
+
+    def get_brixia_mask(self, labels, dim=6):
+        batch_dim = labels.shape[0]
+
+        mask = torch.zeros((batch_dim, dim))
+        index = [(label == 1).item() for label in labels]
+        mask[index] = torch.ones(1, dim)
+        return mask
+
+    def get_aiforcovid_mask(self, labels, dim=2):
+        batch_dim = labels.shape[0]
+
+        labels = torch.abs(labels - 1)
+        mask = torch.zeros((batch_dim, dim))
+
+        index = [(label == 1).item() for label in labels]
+
+        mask[index] = torch.ones(1, dim)
+
+
+        return mask
+
+    def encode_batch(self, labels_class):
+        return [self.encode_dataset[label] for label in labels_class]
+
+    def get_loss(self, name):
+        if name.upper() == 'MSE':
+            return MSE_loss
+        elif name.upper() == 'BCE':
+            return nn.BCELoss()
+        elif name.upper() == 'CE':
+            return nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError
+
+    def forward(self, outputs, labels, **kwargs):
+
+        labels = labels[:, :6]
+        labels_class = kwargs['dataset_class']
+        # Create a new vector with the labels that link each sample to the corresponding dataset
+        labels_class = torch.Tensor(self.encode_batch(labels_class)).to(labels.device)
+        BX_mask = self.get_brixia_mask(labels=labels_class, dim=self.dim_2).to(labels.device)
+        AFC_mask = self.get_aiforcovid_mask(labels=labels_class, dim=self.dim_1).to(labels.device)
+
+        BX_selector = ~torch.any(BX_mask == 0, dim=1)
+        AFC_selector = ~torch.any(AFC_mask == 0, dim=1)
+
+        # Calculate the loss function for each head/Task
+        Loss_AFC = self.get_loss(self.loss_1)
+        Loss_BX = self.get_loss(self.loss_2)
+
+        # Calculate the loss for each head
+        loss_1 = Loss_AFC(outputs[0] * AFC_mask, labels[:, :self.dim_1] * AFC_mask)
+        loss_2 = Loss_BX(outputs[1] * BX_mask, labels[:, :self.dim_2] * BX_mask)
+
+        # Calculate the total loss
+        Loss_TOT = loss_1 + loss_2
+        return {'Loss_TOT': Loss_TOT, 'Loss_M': loss_1, 'Loss_S': loss_2}, {'AFC_sel': AFC_selector, 'BX_sel': BX_selector}
+
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+
+
 class ParallelMultiObjective(nn.Module):
-    def __init__(self, device, config_model, backbone='resnet18', dropout_rate=0.5, ):
+    def __init__(self, cfg=None, backbone='resnet18', device=None, *args, **kwargs):
         super(ParallelMultiObjective, self).__init__()
-        self.config_model = config_model
+        self.config = cfg
         self.device = device
 
+        self.cfg_morbidity = cfg['data']['modes']['morbidity']
+        self.cfg_severity = cfg['data']['modes']['severity']
+
+        self.classes_morbidity = self.cfg_morbidity['classes']
+        self.classes_severity = self.cfg_severity['classes']
+
+        self.labels = [*self.cfg_morbidity['classes'], *self.cfg_severity['classes']]
+        self.class_to_id = {c: i for i, c in enumerate(self.labels)}
         # BACKBONE
-        self.backbone = get_backbone(backbone)
+        self.softmax = nn.Softmax(dim=1)
+        self.backbone, self.in_features = get_backbone(backbone)
+        self.drop_rate = self.config['model']['dropout_rate']
+        self.train_backbone = True
 
-        # (AIFORCOVID) MORBIDITY HEAD
 
-        self.linear_h1 = nn.Sequential(
-            nn.Linear(dim1_og, dim1), nn.ReLU())
+        # HEAD CLASSIFICATION : MORBIDITY
+        # HEAD CLASSIFICATION : MORBIDITY
+        self.Head_Morbidity = nn.Sequential(
+            OrderedDict([
 
-        ### Model 2
-        self.linear_h2 = nn.Sequential(nn.Linear(dim2_og, dim2), nn.ReLU())
-        self.linear_z2 = nn.Bilinear(dim2_og, dim1_og, dim2) if use_bilinear else nn.Sequential(
-            nn.Linear(dim2_og + dim1_og, dim2))
-        self.linear_o2 = nn.Sequential(nn.Linear(dim2, dim2), nn.ReLU(), nn.Dropout(p=dropout_rate))
+                ('M_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                ('M_ReLU0', nn.ReLU()),
+                ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
 
-        ### Model 3
-        self.linear_h3 = nn.Sequential(nn.Linear(dim3_og, dim3), nn.ReLU())
-        self.linear_z3 = nn.Bilinear(dim1_og, dim3_og, dim3) if use_bilinear else nn.Sequential(
-            nn.Linear(dim1_og + dim3_og, dim3))
-        self.linear_o3 = nn.Sequential(nn.Linear(dim3, dim3), nn.ReLU(), nn.Dropout(p=dropout_rate))
+                ('M_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                ('M_ReLU2', nn.ReLU()),
+                ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
 
-        self.post_fusion_dropout = nn.Dropout(p=0.25)
-        self.encoder1 = nn.Sequential(nn.Linear((dim1 + 1) * (dim2 + 1) * (dim3 + 1), mmhid), nn.ReLU(),
-                                      nn.Dropout(p=dropout_rate))
-        self.encoder2 = nn.Sequential(nn.Linear(mmhid + skip_dim, mmhid), nn.ReLU(), nn.Dropout(p=dropout_rate))
+                ('M_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_morbidity), bias=True))
+            ]))
+        self.Head_Severity = nn.Sequential(
+            OrderedDict([
 
-        init_max_weights(self)
+                ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                ('S_ReLU0', nn.ReLU()),
+                ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
 
-    def forward(self, vec1, vec2, vec3):
-        ### Gated Multimodal Units
-        if self.gate1:
-            h1 = self.linear_h1(vec1)
-            z1 = self.linear_z1(vec1, vec3) if self.use_bilinear else self.linear_z1(
-                torch.cat((vec1, vec3), dim=1))  # Gate Path with Omic
-            o1 = self.linear_o1(nn.Sigmoid()(z1) * h1)
-        else:
-            o1 = self.linear_h1(vec1)
+                ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                ('S_ReLU1', nn.ReLU()),
+                ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
 
-        if self.gate2:
-            h2 = self.linear_h2(vec2)
-            z2 = self.linear_z2(vec2, vec1) if self.use_bilinear else self.linear_z2(
-                torch.cat((vec2, vec1), dim=1))  # Gate Graph with Omic
-            o2 = self.linear_o2(nn.Sigmoid()(z2) * h2)
-        else:
-            o2 = self.linear_h2(vec2)
+                ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
+            ]))
+        init_weights(self.Head_Morbidity)
+        init_weights(self.Head_Severity)
 
-        if self.gate3:
-            h3 = self.linear_h3(vec3)
-            z3 = self.linear_z3(vec1, vec3) if self.use_bilinear else self.linear_z3(
-                torch.cat((vec1, vec3), dim=1))  # Gate Omic With Path
-            o3 = self.linear_o3(nn.Sigmoid()(z3) * h3)
-        else:
-            o3 = self.linear_h3(vec3)
+        # Turn on the training of the gradients
+        change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
 
-        ### Fusion
-        o1 = torch.cat((o1, torch.cuda.FloatTensor(o1.shape[0], 1, device=self.device).fill_(1)), 1)
-        o2 = torch.cat((o2, torch.cuda.FloatTensor(o2.shape[0], 1, device=self.device).fill_(1)), 1)
-        o3 = torch.cat((o3, torch.cuda.FloatTensor(o3.shape[0], 1, device=self.device).fill_(1)), 1)
-        o12 = torch.bmm(o1.unsqueeze(2), o2.unsqueeze(1)).flatten(start_dim=1)
-        o123 = torch.bmm(o12.unsqueeze(2), o3.unsqueeze(1)).flatten(start_dim=1)
-        out = self.post_fusion_dropout(o123)
-        out = self.encoder1(out)
-        if self.skip:
-            out = torch.cat((out, o1, o2, o3), 1)
-        out = self.encoder2(out)
-        return out
+    def activate_Head_training_module(self):
+        for head in [self.Head_Morbidity, self.Head_Severity]:
+            for i, param in enumerate(list(head.parameters())):
+                param.requires_grad = True
+        for i, param in enumerate(list(self.backbone.parameters())):
+            param.requires_grad = self.train_backbone
+
+    def load_backbone_average_weights(self, morbidity_params, severity_params, Beta=0.):
+        """
+        This function load the mean weights of the two models, and fuse them together with an adaptive mean. If Beta == 0, the weights
+        loaded in the model are coming from only the severity model, if Beta == 1, the weights loaded in the model are coming from only the morbidity model.
+
+        :param morbidity_params: Morbidity model parameters
+        :param severity_params: Severity model parameters
+        :param Beta: Beta parameter for the weighted mean
+        :return: None
+        """
+        # TODO Adapt this one ?
+        this_model_params = dict(self.named_parameters())
+        for (name_m, param_morbidity), (name_s, param_severity) in zip(morbidity_params, severity_params):
+            if name_m == name_s:
+                print('ANALYZING: (S) ', name_s, ' ; (M) ', name_m)
+                if name_m in this_model_params and name_s in this_model_params:
+                    this_model_params[name_m].data.copy_((Beta * param_morbidity.data + (1 - Beta) * param_severity.data))
+        self.load_state_dict(this_model_params, strict=False)
+
+    def forward(self, x):
+        x_hat = self.backbone(x)
+        out1 = self.Head_Morbidity(x_hat)
+        out2 = self.Head_Severity(x_hat)
+        return out1, out2
+
+
+class SerialMultiObjective(nn.Module):
+
+    def __init__(self, cfg=None, backbone='resnet18', device=None, *args, **kwargs):
+        super(SerialMultiObjective, self).__init__()
+        self.config = cfg
+        self.device = device
+
+        self.cfg_morbidity = cfg['data']['modes']['morbidity']
+        self.cfg_severity = cfg['data']['modes']['severity']
+
+        self.classes_morbidity = self.cfg_morbidity['classes']
+        self.classes_severity = self.cfg_severity['classes']
+
+        self.labels = [*self.cfg_morbidity['classes'], *self.cfg_severity['classes']]
+        self.class_to_id = {c: i for i, c in enumerate(self.labels)}
+        # BACKBONE
+        self.softmax = nn.Softmax(dim=1)
+        self.backbone, self.in_features = get_backbone(backbone)
+        self.drop_rate = self.config['model']['dropout_rate']
+
+        # HEAD CLASSIFICATION : MORBIDITY
+        self.Head_Morbidity = nn.Sequential(
+            OrderedDict([
+
+                ('M_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                ('M_ReLU0', nn.ReLU()),
+                ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
+
+                ('M_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                ('M_ReLU2', nn.ReLU()),
+                ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
+
+                ('M_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_morbidity), bias=True))
+            ]))
+        self.Head_Severity = nn.Sequential(
+            OrderedDict([
+                ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
+                ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                ('S_ReLU0', nn.ReLU()),
+                ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
+                ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                ('S_ReLU1', nn.ReLU()),
+
+                ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
+            ]))
+
+        # Turn on the training of the gradients
+        change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
+
+    def activate_Head_training_module(self):
+        for i, param in enumerate(list(self.parameters())):
+            param.requires_grad = True
+
+    def load_mean_weights(self, morbidity_params, severity_params, Beta=0.):
+        """
+        This function load the mean weights of the two models, and fuse them together with an adaptive mean. If Beta == 0, the weights
+        loaded in the model are coming from only the severity model, if Beta == 1, the weights loaded in the model are coming from only the morbidity model.
+
+        :param morbidity_params: Morbidity model parameters
+        :param severity_params: Severity model parameters
+        :param Beta: Beta parameter for the weighted mean
+        :return: None
+        """
+        # TODO Adapt this one ?
+        this_model_params = dict(self.named_parameters())
+        for (name_m, param_morbidity), (name_s, param_severity) in zip(morbidity_params, severity_params):
+            if name_m == name_s:
+                print('ANALYZING: (S) ', name_s, ' ; (M) ', name_m)
+                if name_m in this_model_params and name_s in this_model_params:
+                    this_model_params[name_m].data.copy_((Beta * param_morbidity.data + (1 - Beta) * param_severity.data))
+        self.load_state_dict(this_model_params, strict=False)
+
+    def forward(self, x):
+        x_hat = self.backbone(x)
+        out1 = self.Head_Morbidity(x_hat)
+        out2 = self.Head_Severity(x_hat)
+        return out1, out2

@@ -54,6 +54,9 @@ parser.add_argument("--model_names", help="model_name", default=
     "vgg16_bn",
     "vgg13_bn",
     "vgg13",
+    "resnet18",
+    "resnet34",
+    "resnet50",
 
     "resnet101",
     "resnet152",

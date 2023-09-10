@@ -46,8 +46,9 @@ def main():
     model_name = args.model_name
     steps = ['train', 'val', 'test']
     cv = cfg['data']['cv']
-    fold_list = list(range(cv)) if isinstance(cv, int) else [int(value) for value in os.listdir(cfg['data']['fold_dir'])]
+    fold_list = list(range(cv)) if isinstance(cv, int) else [int(value) for value in os.listdir(cfg['data']['fold_dir'])][1:]
     print(fold_list)
+
     validation_name = {True: 'Cross validation double stratified', False: 'Leave-one-Center-out'}
     # Data config
     data_cfg = cfg['data']['modes']['img']
@@ -153,9 +154,10 @@ def main():
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
         if is_debug():
-            fold_data['train'] = fold_data['train'][100:200]
-            fold_data['val'] = fold_data['val'][100:200]
-            fold_data['test'] = fold_data['test'][100:200]
+            ind = [17130509736980299451 == im for im in fold_data['train']['img'].to_list()].index(True)
+            fold_data['train'] = fold_data['train'][2000:2100]
+            fold_data['val'] = fold_data['val'][:]
+            fold_data['test'] = fold_data['test'][:]
 
 
 
@@ -169,7 +171,15 @@ def main():
         #
         idx_to_class = {v: k for k, v in datasets['train'].class_to_idx.items()}
         # Model
-        #input, _, _ = next(iter(data_loaders["train"]))
+        if is_debug():
+            for k, (inputs, labels, file_name) in enumerate(data_loaders["train"]):
+                print(inputs.shape, labels.shape, file_name)
+
+
+
+            input, _, _ = next(iter(data_loaders["train"]))
+            input, _, _ = next(iter(data_loaders["val"]))
+            input, _, _ = next(iter(data_loaders["test"]))
         model = get_SingleTaskModel(backbone=model_name, cfg=cfg, device=device)
         print(model)
         
@@ -195,7 +205,7 @@ def main():
 
         model, history = train_severity(model=model,
                                          criterion=criterion,
-                                         model_file_name=f'model_{model_name}',
+                                         model_file_name=f'model_{model_name}.pt',
                                          dataloaders=data_loaders,
                                          optimizer=optimizer,
                                          scheduler=scheduler,

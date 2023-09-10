@@ -153,9 +153,10 @@ def main():
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
         if is_debug():
-            fold_data['train'] = fold_data['train'][100:200]
-            fold_data['val'] = fold_data['val'][100:200]
-            fold_data['test'] = fold_data['test'][100:200]
+            pass
+            #fold_data['train'] = fold_data['train'][100:200]
+            #fold_data['val'] = fold_data['val'][100:200]
+            #fold_data['test'] = fold_data['test'][100:200]
 
 
 

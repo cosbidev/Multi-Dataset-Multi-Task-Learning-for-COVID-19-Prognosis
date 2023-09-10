@@ -6,10 +6,10 @@ device:
   gpu_num_workers: 6
 
 data:
-  cv: 5
-  fold_dir: data/processed/BX/5 # folder where upload the CV splits at patient level
-  model_dir: models/BX/5 # folder to save trained model
-  report_dir: reports/BX/5 # folder to save results
+  cv: loCo
+  fold_dir: data/processed/BX/loCo # folder where upload the CV splits at patient level
+  model_dir: models/BX/loCo # folder to save trained model
+  report_dir: reports/BX/loCo # folder to save results
   classes: # name of classes
     - A
     - B

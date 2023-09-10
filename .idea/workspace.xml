@@ -5,28 +5,48 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a6295acc-a524-4d5a-8135-ac9d0ee7da35" name="Changes" comment="commit some correction for training morbidity/severity">
+      <change afterPath="$PROJECT_DIR$/configs/PorM_multi_loCo6_debug.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_multitask_parallel_5.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_multitask_parallel_loCo.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_multitask_serial_5.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_multitask_serial_loCo.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/bx_loCo_debug.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/parallel_config_multitask_Masked_loCo18.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/parallel_config_multitask_Masked_loCo6.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/parallel_config_multitask_loCo18.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/parallel_config_multitask_loCo6.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/serial_config_multitask_Masked_loCo18.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/serial_config_multitask_Masked_loCo6.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/serial_config_multitask_loCo18.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/loCo/multitask/serial_config_multitask_loCo6.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/parallel_multi_cv5_debug.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/serial_multi_cv5_debug.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/COVID19-ItaChina.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/COVID19-ItaChina.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/runConfigurations/severity_debug.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/runConfigurations/severity_debug.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_Masked_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_Masked_cv5.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5_softmax.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/morbidity/afc_config_singletask_cv5_softmax.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_Masked_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_Masked_cv5.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_cv5.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/severity/bx_config_singletask_cv5.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/afc_cv5_debug.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/afc_cv5_debug.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_5.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_5.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_loCo.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_morbidity_loCo.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_5.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_5.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_loCo.json" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups_severity_loCo.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_Masked_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_Masked_loCo.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/morbidity/afc_config_singletask_loCo.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_Masked_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_Masked_loCo.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_loCo.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/loCo/severity/bx_config_singletask_loCo.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/file_canc_job" beforeDir="false" afterPath="$PROJECT_DIR$/file_canc_job" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/morbidity/afc_config_singletask_Masked_cv10.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/multitask/parallel_config_multitask_Masked_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/morbidity/afc_config_singletask_Masked_cv10_CLAHE_filtered_clipped.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/morbidity/afc_config_singletask_cv10.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/multitask/parallel_config_multitask_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/morbidity/afc_config_singletask_cv10_CLAHE_filtered_clipped.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/severity/afc_config_singletask_Masked_cv10.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/multitask/serial_config_multitask_Masked_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/severity/afc_config_singletask_Masked_cv10_CLAHE_filtered_clipped.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/severity/afc_config_singletask_cv10_CLAHE_filtered_clipped.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/severity/brixia_config_singletask.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/PorM_multi_loCo18_debug.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/10/severity/bx_config_singletask_cv10.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/5/multitask/serial_config_multitask_cv5.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/bash_experiments/experiment_setups.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/bx_cv5_debug.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/bx_cv5_debug.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bash/launch_bash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/launch_bash.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bash/train_morbidity.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_morbidity.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/bash/train_severity.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_severity.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/train_morbidity_debug.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_morbidity_debug.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tester.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tester.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils_images.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_images.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/utils_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/utils_visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_visualization.py" afterDir="false" />
     </list>
@@ -92,21 +112,22 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;severity&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Documents/GitHub/COVID19-ItaChina&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Documents/GitHub/COVID19-ItaChina/configs&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PythonContentEntriesConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/configs" />
-      <recent name="$PROJECT_DIR$/src" />
-      <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/data" />
+      <recent name="$PROJECT_DIR$/configs/loCo/multitask" />
+      <recent name="$PROJECT_DIR$/configs/bash_experiments" />
+      <recent name="$PROJECT_DIR$/configs/loCo" />
+      <recent name="$PROJECT_DIR$/configs/5/multitask" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/configs/5/morbidity" />
@@ -129,6 +150,50 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" />
       <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="tester" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="COVID19-ItaChina" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tester.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="train_MultiObjectiveModel" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="COVID19-ItaChina" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" />
+      <option name="PARAMETERS" value="--model_name resnet18 --cfg_file configs/parallel_multi_cv5_debug.yaml" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -160,13 +225,16 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.train_MultiObjectiveModel" />
       <item itemvalue="Python.severity_debug" />
       <item itemvalue="Python.train_morbidity_SingleTask" />
+      <item itemvalue="Python.tester" />
       <item itemvalue="Python.Create_Final_Report" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.Create_Final_Report" />
+        <item itemvalue="Python.tester" />
       </list>
     </recent_temporary>
   </component>
@@ -196,6 +264,13 @@
       <workItem from="1693476772680" duration="1280000" />
       <workItem from="1693497235652" duration="7923000" />
       <workItem from="1693665148137" duration="1239000" />
+      <workItem from="1693667473087" duration="177000" />
+      <workItem from="1693811771641" duration="10970000" />
+      <workItem from="1693922494469" duration="7455000" />
+      <workItem from="1693986841402" duration="17270000" />
+      <workItem from="1694075100741" duration="7572000" />
+      <workItem from="1694157576524" duration="25368000" />
+      <workItem from="1694342364001" duration="2772000" />
     </task>
     <task id="LOCAL-00001" summary="first commit">
       <option name="closed" value="true" />
@@ -364,20 +439,43 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py</url>
-          <line>56</line>
-          <option name="timeStamp" value="53" />
+          <line>63</line>
+          <option name="timeStamp" value="54" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tester.py</url>
+          <line>10</line>
+          <option name="timeStamp" value="61" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tester.py</url>
+          <line>23</line>
+          <option name="timeStamp" value="62" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/train_severity_SingleTask.py</url>
+          <line>182</line>
+          <option name="timeStamp" value="109" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py</url>
+          <line>272</line>
+          <option name="timeStamp" value="162" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="self" />
+        <watch expression="dataloaders" />
       </configuration>
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="train_morbidity_SingleTask Coverage Results" MODIFIED="1693234001082" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$severity_debug.coverage" NAME="severity_debug Coverage Results" MODIFIED="1691154540389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1693665791614" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$tester.coverage" NAME="tester Coverage Results" MODIFIED="1693838831776" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="train_morbidity_SingleTask Coverage Results" MODIFIED="1694343905027" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_MultiObjectiveModel.coverage" NAME="train_MultiObjectiveModel Coverage Results" MODIFIED="1694342380236" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$severity_debug.coverage" NAME="severity_debug Coverage Results" MODIFIED="1694161880334" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1694342411372" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
