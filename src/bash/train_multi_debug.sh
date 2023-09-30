@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
-#SBATCH -N 1 --gpus-per-node=A40:2
-#SBATCH -t 0-1:00:00
+#SBATCH -N 1 --gpus-per-node=A40:1
+#SBATCH -t 1-1:00:00
 # Output files
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out
@@ -30,12 +30,11 @@ module load  OpenCV/4.6.0-foss-2022a-CUDA-11.7.0-contrib
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID || exit
 
 
-config="configs/5/severity/bx_config_singletask_cv5.yaml"
-model="densenet121_CXR"
-id_exp="2"
-
+config="configs/parallel_multi_cv5_debug.yaml"
+model="resnet50"
+id_exp="100"
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_severity_SingleTask.py   --model_name ${model} --cfg_file=${config} --id_exp=${id_exp} -c
+python src/models/train_MultiObjectiveModel.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
 # Deactivate venv
 deactivate

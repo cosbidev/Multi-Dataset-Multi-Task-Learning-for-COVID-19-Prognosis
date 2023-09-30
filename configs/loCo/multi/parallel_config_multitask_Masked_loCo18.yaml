@@ -6,11 +6,11 @@ device:
   gpu_num_workers: 6
 
 data:
-  cv: loCo6
-  model_dir: models/Multi/loCo6 # folder to save trained model
-  report_dir: reports/Multi/loCo6 # folder to save results
+  cv: loCo18
+  model_dir: models/Multi/loCo18 # folder to save trained model
+  report_dir: reports/Multi/loCo18 # folder to save results
 
-  batch_size: 64
+  batch_size: 128
   modes:
     morbidity:
       img:
@@ -53,7 +53,8 @@ model:
   dropout_rate: 0.50 # dropout rate
   regression_type: area
   softmax: False # if True, the output is a probability distribution over the classes
-
+  beta: 0.5 # weights balance between task AFC-BX
+  train_backbone: True # if True, the backbone is trained
 trainer:
   loss_1: mse # loss function
   loss_2: mse # loss function
@@ -66,5 +67,5 @@ trainer:
     patience: 20 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-7
     factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 100 # if the validation loss do not improve for x epochs stop training
+  early_stopping: 75 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

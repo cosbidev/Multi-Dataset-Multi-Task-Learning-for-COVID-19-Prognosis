@@ -1,15 +1,9 @@
 [
-  {
-    "config_file" : "afc_config_singletask_cv5.yaml",
-    "name" : "cv5",
-    "fold" : 5,
-    "models": "all"
 
-  },
   {
-    "config_file" : "afc_config_singletask_Masked_cv5.yaml",
+    "config_file" : "serial_config_multitask_Masked_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "all"
+    "models": "['resnet18', 'resnet50', 'resnet34']"
   }
 ]

@@ -4,14 +4,14 @@ import pandas as pd
 
 def reportCreation(modality = 'Morbidity'):
 
-    modality_set = {"Morbidity": 1, "Severity":0 }
-    directory_id = 5
+    modality_set = {"morbidity": 1, "severity":0 , "multi": 2 }
+    directory_id = 'baseline'
 
     v_ = 'all'
 
     versions = {'R':(['resnet18', 'resnet34', 'resnet50'], 'resnets18-34-50'), 'all' :([], 'all')}
 
-    if modality_set[modality]:
+    if modality_set[modality.lower()] == 1:
         for CV in ['loCo', '5']:
 
             experiment_folder = f"reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}"
@@ -25,55 +25,58 @@ def reportCreation(modality = 'Morbidity'):
                 Models_folders = os.listdir(Experiment_folder)
 
                 df_resume_experiments = pd.DataFrame(index=Models_folders,
-                                                     columns=['mean ACC', 'std ACC', 'mean ACC MILD', 'std ACC MILD',
-                                                              'mean ACC SEVERE', 'std ACC SEVERE', 'mean AUC', 'std AUC',
-                                                              'mean Precision', 'std Precision', 'mean Recall',
-                                                              'std Recall', 'mean F1', 'std F1'])
+                                                     columns=['Accuracy_mean', 'Accuracy_std','Precision_mean','Precision_std','Recall_mean','Recall_std','F1 Score_mean','F1 Score_std','ROC AUC Score_mean','ROC AUC Score_std','MILD_accuracy_mean','MILD_accuracy_std','SEVERE_accuracy_mean','SEVERE_accuracy_std'])
 
                 print('Experiment_folder: ', Experiment_folder)
 
                 for Model_folder in Models_folders:
                     version = versions[v_]
                     if version[0].__len__() > 0:
-                        if Model_folder not in version[0]:
+                        if Model_folder not in version[0] or Model_folder is 'all':
                             continue
                     print('Model_folder: ', Model_folder)
 
                     model_report_dir = os.path.join(Experiment_folder, Model_folder)
-
-                    file_report = os.path.join(model_report_dir, f'report_{CV}.xlsx')
-                    metrics_report = os.path.join(model_report_dir, f'report_{CV}_metrics.xlsx')
+                    if '.DS' in model_report_dir:
+                        continue
+                    os.listdir(model_report_dir)
+                    file_report = os.path.join(model_report_dir, f'[all]_test_results_{Model_folder}.xlsx')
 
                     if os.path.exists(file_report):
                         file_result_cv = pd.read_excel(file_report, index_col=0)
-                        file_result_cv_metrics = pd.read_excel(metrics_report, index_col=0)
 
-                        extraction_file_results = file_result_cv.iloc[0, :6]
-                        extraction_file_results_metrics = file_result_cv_metrics.iloc[0, :8]
+                        mean_row = file_result_cv.loc['mean', :].to_dict()
+                        std_row = file_result_cv.loc['std', :].to_dict()
+                        combined_results = {}
+                        for (key_mean, mean_metric), (key_std, std_metric) in zip(mean_row.items(), std_row.items()):
+                            print(mean_metric, std_metric)
+                            combined_results[key_mean + '_mean'] = mean_metric
+                            combined_results[key_mean + '_std'] = std_metric
 
-                        concatenated_results = pd.concat([extraction_file_results, extraction_file_results_metrics],
-                                                         axis=0).to_frame().T
-
-                        df_resume_experiments.loc[Model_folder] = concatenated_results.values[0]
+                        df_resume_experiments.loc[Model_folder] = combined_results
 
                 df_resume_experiments.dropna(inplace=True)
-                df_resume_experiments = df_resume_experiments.sort_values(by=['mean ACC'], ascending=False)
+                df_resume_experiments = df_resume_experiments.sort_values(by=['Accuracy_mean'], ascending=False)
 
                 save_name = Experiment_folder.name.split('singletask')[-1]
 
+                # Report folder
+                rep_version = os.path.join(f'reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}', Experiment_folder.name, f'{v_}')
+
+                if not os.path.exists(rep_version):
+                    os.mkdir(rep_version)
                 df_resume_experiments.to_excel(
-                    os.path.join(f'reports/AFC/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}', f'models_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
-
-                print('here')
+                    os.path.join(rep_version, f'models_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
 
 
 
-    else:
+
+    elif modality_set[modality.lower()] == 0:
         for CV in ['loCo', '5']:
 
             Experiment_folders = [
-            f"reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_1/{modality.lower().strip()}_singletask_regression-area_{str(CV)}_Batch64_LR0.001_Drop0.25_LungMask_LungBbox",
-            f"reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_1/{modality.lower().strip()}_singletask_regression-area_{str(CV)}_Batch64_LR0.001_Drop0.25_Entire_LungBbox",
+            f"reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}/{modality.lower().strip()}_singletask_regression-area_{str(CV)}_Batch64_LR0.001_Drop0.25_LungMask_LungBbox",
+            f"reports/BX/{str(CV)}/{modality.lower().strip()}_singletask_{directory_id}/{modality.lower().strip()}_singletask_regression-area_{str(CV)}_Batch64_LR0.001_Drop0.25_Entire_LungBbox",
             ]
 
             df_CC_results = pd.DataFrame(columns=['mean A', 'std A', 'mean B', 'std B', 'mean C', 'std C', 'mean D', 'std D', 'mean E', 'std E', 'mean F', 'std F', 'mean RL', 'std RL', 'mean LL', 'std LL', 'mean G', 'std G'])
@@ -167,6 +170,8 @@ def reportCreation(modality = 'Morbidity'):
                 df_R2_results.to_excel(
                     os.path.join(f'reports/BX/{CV}/{modality.lower().strip()}_singletask_{directory_id}', f'models_R2_report_{CV}_resume_exp_{save_name}_{version[1]}.xlsx'))
 
+    elif modality_set[modality] == 2:
+        for CV in ['loCo', '5']:
 
 
 

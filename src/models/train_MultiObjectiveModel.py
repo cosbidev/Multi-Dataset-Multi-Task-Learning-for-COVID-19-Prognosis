@@ -1,14 +1,16 @@
 import argparse
+import glob
+import itertools
 import sys
 import os
-
-from easydict import EasyDict
-
-from src.utils.utils_visualization import plot_training_multi
 
 print('Python %s on %s' % (sys.version, sys.platform))
 print(os.getcwd(), ' the current working directory')
 sys.path.extend('./')
+from easydict import EasyDict
+
+from src.utils.utils_visualization import plot_training_multi
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,8 +18,8 @@ from torch.optim import lr_scheduler
 import pandas as pd
 import collections
 import yaml
-from src import mkdir, seed_all, MultiTaskDataset, seed_worker, get_MultiTaskModel, plot_training, train_morbidity, evaluate, is_debug, train_MultiTask, IdentityMultiHeadLoss, \
-    evaluate_multi_task
+from src import mkdir, seed_all, MultiTaskDataset, seed_worker, get_MultiTaskModel, plot_training, train_morbidity, evaluate_morbidity, is_debug, train_MultiTask, IdentityMultiHeadLoss, \
+    evaluate_multi_task, Logger
 from src.utils import utils_data
 
 # Configuration file
@@ -49,15 +51,6 @@ def main():
     steps = ['train', 'val', 'test']
     cv = cfg['data']['cv']
 
-
-
-
-    fold_list = list(range(cv)) if isinstance(cv, int) else [int(value) for value in os.listdir(cfg['data']['fold_dir'])]
-
-
-
-
-    print(fold_list)
     # Data config
     data_cfg = cfg['data']
     CV = '_' + str(cfg['data']['cv'])
@@ -106,6 +99,10 @@ def main():
     print(' ----------| Report directory: ', report_dir)
 
     mkdir(report_dir)
+    logger = Logger(file_name=os.path.join(report_dir, f'log_print_out_{model_name}.txt'), file_mode="w", should_flush=True)
+    with open(os.path.join(report_dir, f'config_{model_name}.yaml'), 'w') as file:
+        documents = yaml.dump(cfg, file)
+    plot_training_dir = os.path.join(report_dir, "training_plot")
 
     plot_training_dir = os.path.join(report_dir, "training_plot")
 
@@ -113,13 +110,25 @@ def main():
     plot_test_dir = os.path.join(report_dir, "test_plot")
     mkdir(plot_test_dir)
 
+    # Create Fold Array for MORBIDITY TASK and SEVERITY TASK (same folds)
+    cv_option = cfg['data']['cv']
+
+
+    fold_grid, fold_list = utils_data.create_combined_folds(cv_option=cv_option, morbidity_cfg=morbidity_cfg, severity_cfg=severity_cfg)
+    if is_debug():
+        fold_grid = {fold: fold_grid[fold] for fold in fold_list[:2]}
+        fold_list = list(fold_grid.keys())
     # Results table
     report_file = os.path.join(report_dir, 'report_' + str(cv) + '.xlsx')
     metrics_file = os.path.join(report_dir, 'report_' + str(cv) + '_metrics.xlsx')
-    report_file_temp = os.path.join(report_dir, 'report_' + str(cv) + '_temp.xlsx')
-    report_metrics_temp = os.path.join(report_dir, 'report_' + str(cv) + '_metrics_temp.xlsx')
 
-    # Results table Morbidity
+    # Results table (S)
+    rows_S = ['CC', 'SD', 'MSE', 'L1', 'R2']
+    columns_S = ['A', 'B', 'C', 'D', 'E', 'F', 'RL', 'LL', 'G']
+    columns_fold_S = list(itertools.chain(*[[str(fold) + f' {zone}' for zone in columns_S] for fold in fold_list]))
+    df_results_S = pd.DataFrame(index=rows_S, columns=columns_fold_S)
+
+    # Results table (M)
     classes_morbidity = morbidity_cfg['classes']
     results_frame_morbidity = {}
     acc_cols = []
@@ -134,7 +143,7 @@ def main():
             results_frame_morbidity[cat_col] = []
     acc_cat_cols = dict(acc_cat_cols)
 
-    results_metrics = {}
+    results_metrics_morbidity = {}
     f1_cols, acc_cols_test, auc_cols, recall_cols, precision_cols = [], [], [], [], []
     for fold in fold_list:
         acc_col_test = str(fold) + " ACC test "
@@ -148,23 +157,22 @@ def main():
         auc_cols.append(precision_col)
         recall_cols.append(recall_col)
         precision_cols.append(auc_col)
-        results_metrics[acc_col_test] = []
-        results_metrics[f1_col] = []
-        results_metrics[precision_col] = []
-        results_metrics[recall_col] = []
-        results_metrics[auc_col] = []
-
-
-    # Create Fold Array for MORBIDITY TASK and SEVERITY TASK (same folds)
-    cv_option = cfg['data']['cv']
-
-
-    fold_grid = utils_data.create_combined_folds(cv_option=cv_option, morbidity_cfg=morbidity_cfg, severity_cfg=severity_cfg)
-
+        results_metrics_morbidity[acc_col_test] = []
+        results_metrics_morbidity[f1_col] = []
+        results_metrics_morbidity[precision_col] = []
+        results_metrics_morbidity[recall_col] = []
+        results_metrics_morbidity[auc_col] = []
 
 
 
     for fold, fold_data in fold_grid.items():
+
+        string_fold = '-----------| Fold ' + str(fold) + ' |----------'
+        print(''.center(len(string_fold), '-'))
+        print(''.center(len(string_fold), '-'))
+        print(string_fold)
+        print(''.center(len(string_fold), '-'))
+        print(''.center(len(string_fold), '-'))
         # Dir
         model_fold_dir = os.path.join(model_dir, str(fold))
         mkdir(model_fold_dir)
@@ -176,37 +184,60 @@ def main():
         # Data
 
         if is_debug():
-            fold_data['train'] = fold_data['train'][840:1040]
-            fold_data['val'] = fold_data['val'][213:413]
-            fold_data['test'] = fold_data['test'][213:413]
+            fold_data['train'] = fold_data['train'][740:1040:3]
+            fold_data['val'] = fold_data['val'][113:413:2]
+            fold_data['test'] = fold_data['test'][113:413:2]
 
 
 
-
+        # ------------------- DATA -------------------
         datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg) for step in steps}
 
         data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
                         'val': torch.utils.data.DataLoader(datasets['val'], batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
                         'test': torch.utils.data.DataLoader(datasets['test'], batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-        #
-        idx_to_class = {v: k for k, v in datasets['train'].class_to_idx.items()}
-        # Model
-        #input, y, id, dataset_class = next(iter(data_loaders["train"]))
+        idx_to_class = datasets['train'].m_idx_to_class
 
+        # ------------------- MODEL -------------------
         model = get_MultiTaskModel(backbone=model_name, cfg=cfg, device=device)
-        print(model)
+
 
         if cfg['model']['pretrained']:
             ids_experiment_to_load = cfg['model']['pretrained']
 
+            task = {'AFC':'morbidity', 'BX': 'severity'}
 
+
+
+
+            selector_exp_folder = {
+                5: lambda name_dataset, id_: f'./models/{name_dataset}/5/{task[name_dataset]}_singletask_{id_}/',
+                'loCo': lambda name_dataset, id_: f'./models/{name_dataset}/loCo/{task[name_dataset]}_singletask_{id_}/',
+
+            }
             id_AFC = ids_experiment_to_load[0]
-            # Severity
-            experiment_dir = f'./models/BX/5/severity_singletask_{id_AFC}/'
-            pretrained_Severity_folder = 'severity_singletask_regression-area_5_Batch64_LR0.001_Drop0.25_Entire_LungBbox'
-            pretrained_folder_Severity = os.path.join(experiment_dir, pretrained_Severity_folder)
-            model_dir_weights_S = os.path.join(pretrained_folder_Severity,  model_name, str(fold))
+            id_BX = ids_experiment_to_load[1]
+            cv_option_loading = 'loCo' if 'loco' in str(cv_option).lower() else cv_option
+            exp_folder_morbidity = selector_exp_folder[cv_option_loading](name_dataset='AFC', id_=id_AFC)
+            exp_folder_severtity =  selector_exp_folder[cv_option_loading](name_dataset='BX', id_=id_BX)
+
+            exp_single_task_selector = lambda folder_singletask: glob.glob(os.path.join(folder_singletask, '*Masked_LungBbox')) if cfg['data']['preprocess']['masked'] \
+                                        else glob.glob(os.path.join(folder_singletask, '*Entire_LungBbox'))
+
+
+            exp_folder_AFC = exp_single_task_selector(exp_folder_morbidity)[0]
+            exp_folder_BX = exp_single_task_selector(exp_folder_severtity)[0]
+
+            model_weights_path = lambda dataset_name, cv_option, fold: os.path.join(exp_folder_BX,  model_name, str(fold)) if cv_option != 5 or cv_option != 'loCo6' else os.path.join(
+                exp_folder_BX,  model_name, str(fold))
+
+            model_dir_weights_S = os.path.join(exp_folder_BX,  model_name, str(fold))
+            model_dir_weights_M = os.path.join(exp_folder_AFC,  model_name, str(fold))
+
+
+
             files_S = list(os.scandir(model_dir_weights_S))
+            file_M = list(os.scandir(model_dir_weights_M))
             if len(files_S) > 1:
                 times = [os.path.getatime(path) for path in files_S]
                 file_S = files_S[times.index(min(times))]
@@ -235,9 +266,14 @@ def main():
             morbidity_params = model_Morbidity.named_parameters()
 
             # Load weights for the parameters as the mean of the two models pretrained
-            model.load_backbone_average_weights(morbidity_params, severity_params, Beta = 0.0)
+            Beta = cfg['model']['beta']
+            model.load_backbone_average_weights(morbidity_params, severity_params, Beta = Beta)
 
-        model.activate_Head_training_module()
+        if torch.cuda.device_count() > 1:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            model.activate_Head_training_module()
+            model = nn.DataParallel(model, [0,1])
+
         model = model.to(device)
 
 
@@ -256,8 +292,9 @@ def main():
         # Train model
 
         model, history = train_MultiTask(model=model,
-                                         model_file_name=f'model_{model_name}',
+                                         model_file_name=f'{model_cfg.head}_{model_name}',
                                          dataloaders=data_loaders,
+                                         cfg=cfg,
                                          criterion=criterion,
                                          optimizer=optimizer,
                                          scheduler=scheduler,
@@ -268,33 +305,44 @@ def main():
 
         # Plot Training
         plot_training_multi(history, plot_training_dir)
-
         # Evaluate the model on all the test data
-        results, common_metrics = evaluate_multi_task(model=model, test_loader=data_loaders['test'], criterion=criterion,device=device, idx_to_class=idx_to_class, topk=(1,))
-
-
-
-        acc = common_metrics['Accuracy']
+        results_morbidity, metrics_morbidity, loss_test_severity, metrics_severity = evaluate_multi_task(
+                                                                                                        cfg=cfg,
+                                                                                                        model=model,
+                                                                                                        test_loader=data_loaders['test'],
+                                                                                                        criterion=criterion,
+                                                                                                        device=device,
+                                                                                                        idx_to_class_AFC=idx_to_class,
+                                                                                                        topk=(1,)
+                                                                                                        )
+        acc = metrics_morbidity['Accuracy']
 
         # Test model
-        print(results)
-        print(acc)
+        print(' ----------| (M) Results Test model ')
+        print(metrics_morbidity)
+        print(' ----------| (S) Results Test model ')
+        print(metrics_severity)
+        print(loss_test_severity['Loss_S'].item())
 
-        # Update report
-        results_frame[str(fold) + " ACC"].append(acc)
+        # Update report (M)
+        # ------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------
 
-        for cat in classes:
-            results_frame[str(fold) + " ACC " + str(cat)].append(results.loc[results["class"] == cat]["top1"].item())
+        results_frame_morbidity[str(fold) + " ACC"].append(acc)
 
-        results_metrics[str(fold) + " F1"].append(common_metrics['F1 Score'])
-        results_metrics[str(fold) + " ACC test "].append(acc)
-        results_metrics[str(fold) + " precision"].append(common_metrics['Precision'])
-        results_metrics[str(fold) + " recall"].append(common_metrics['Recall'])
-        results_metrics[str(fold) + " auc"].append(common_metrics['ROC AUC Score'])
+        for cat in classes_morbidity:
+            results_frame_morbidity[str(fold) + " ACC " + str(cat)].append(results_morbidity.loc[results_morbidity["class"] == cat]["top1"].item())
+
+        results_metrics_morbidity[str(fold) + " F1"].append(metrics_morbidity['F1 Score'])
+        results_metrics_morbidity[str(fold) + " ACC test "].append(acc)
+        results_metrics_morbidity[str(fold) + " precision"].append(metrics_morbidity['Precision'])
+        results_metrics_morbidity[str(fold) + " recall"].append(metrics_morbidity['Recall'])
+        results_metrics_morbidity[str(fold) + " auc"].append(metrics_morbidity['ROC AUC Score'])
 
         # Save temporary Results
-        results_frame_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_frame.items()]))
-        for cat in classes[::-1]:
+        results_frame_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_frame_morbidity.items()]))
+        for cat in classes_morbidity[::-1]:
             results_frame_temp.insert(loc=0, column='std ACC ' + cat,
                                       value=results_frame_temp[acc_cat_cols[cat]].std(axis=1))
             results_frame_temp.insert(loc=0, column='mean ACC ' + cat,
@@ -302,45 +350,66 @@ def main():
         results_frame_temp.insert(loc=0, column='std ACC', value=results_frame_temp[acc_cols].std(axis=1))
         results_frame_temp.insert(loc=0, column='mean ACC', value=results_frame_temp[acc_cols].mean(axis=1))
         results_frame_temp.insert(loc=0, column='model', value=model_name)
-        results_frame_temp.to_excel(report_file_temp, index=False)
 
         # Save temporary Metrics
-        results_metrics_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_metrics.items()]))
-        results_metrics_temp.insert(loc=0, column='std F1', value=results_metrics_temp[f1_cols].std(axis=1))
-        results_metrics_temp.insert(loc=0, column='mean F1', value=results_metrics_temp[f1_cols].mean(axis=1))
-        results_metrics_temp.insert(loc=0, column='std Recall', value=results_metrics_temp[recall_cols].std(axis=1))
-        results_metrics_temp.insert(loc=0, column='mean Recall', value=results_metrics_temp[recall_cols].mean(axis=1))
-        results_metrics_temp.insert(loc=0, column='std Precision', value=results_metrics_temp[precision_cols].std(axis=1))
-        results_metrics_temp.insert(loc=0, column='mean Precision', value=results_metrics_temp[precision_cols].mean(axis=1))
-        results_metrics_temp.insert(loc=0, column='std AUC', value=results_metrics_temp[auc_cols].std(axis=1))
-        results_metrics_temp.insert(loc=0, column='mean AUC', value=results_metrics_temp[auc_cols].mean(axis=1))
-        results_metrics_temp.insert(loc=0, column='model', value=model_name)
-        results_metrics_temp.to_excel(report_metrics_temp, index=False)
+        results_metrics_morbidity_temp = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_metrics_morbidity.items()]))
+        results_metrics_morbidity_temp.insert(loc=0, column='std F1', value=results_metrics_morbidity_temp[f1_cols].std(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='mean F1', value=results_metrics_morbidity_temp[f1_cols].mean(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='std Recall', value=results_metrics_morbidity_temp[recall_cols].std(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='mean Recall', value=results_metrics_morbidity_temp[recall_cols].mean(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='std Precision', value=results_metrics_morbidity_temp[precision_cols].std(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='mean Precision', value=results_metrics_morbidity_temp[precision_cols].mean(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='std AUC', value=results_metrics_morbidity_temp[auc_cols].std(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='mean AUC', value=results_metrics_morbidity_temp[auc_cols].mean(axis=1))
+        results_metrics_morbidity_temp.insert(loc=0, column='model', value=model_name)
+        # ------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------
 
-    # Save Results
+        # Results inserted in the table
+        for column in metrics_severity.T.iterrows():
+            df_results_S.loc[:, str(fold) + ' ' + column[0]] = column[1].values
+        df_results_temp_S = df_results_S.copy(deep=True)
+        for column in columns_S[::-1]:
+            selected_cols = [str(fold_) + f' {column}' for fold_ in fold_list]
+            df_results_temp_S.insert(0, 'std ' + column, value=df_results_S[selected_cols].std(1))
+            df_results_temp_S.insert(0, 'mean ' + column, value=df_results_S[selected_cols].mean(1))
 
-    results_frame = pd.DataFrame.from_dict(results_frame)
-    for cat in classes[::-1]:
-        results_frame.insert(loc=0, column='std ACC ' + cat, value=results_frame[acc_cat_cols[cat]].std(axis=1))
-        results_frame.insert(loc=0, column='mean ACC ' + cat, value=results_frame[acc_cat_cols[cat]].mean(axis=1))
-    results_frame.insert(loc=0, column='std ACC', value=results_frame[acc_cols].std(axis=1))
-    results_frame.insert(loc=0, column='mean ACC', value=results_frame[acc_cols].mean(axis=1))
-    results_frame.insert(loc=0, column='model', value=model_name)
+    with pd.ExcelWriter(report_file) as writer_results:
+        # Save Results (S)
+        results_frame_S = df_results_S.copy(deep=True)
+        for column in columns_S[::-1]:
+            selected_cols = [str(fold_) + f' {column}' for fold_ in fold_list]
+            results_frame_S.insert(0, 'std ' + column, value=results_frame_S[selected_cols].std(1))
+            results_frame_S.insert(0, 'mean ' + column, value=results_frame_S[selected_cols].mean(1))
 
-    results_frame.to_excel(report_file, index=False)
+        results_frame_S.to_excel(writer_results, sheet_name='Severity')
 
-    metrics_frame = pd.DataFrame.from_dict(results_metrics)
-    metrics_frame.insert(loc=0, column='std F1', value=metrics_frame[f1_cols].std(axis=1))
-    metrics_frame.insert(loc=0, column='mean F1', value=metrics_frame[f1_cols].mean(axis=1))
-    metrics_frame.insert(loc=0, column='std Recall', value=metrics_frame[recall_cols].std(axis=1))
-    metrics_frame.insert(loc=0, column='mean Recall', value=metrics_frame[recall_cols].mean(axis=1))
-    metrics_frame.insert(loc=0, column='std Precision', value=metrics_frame[precision_cols].std(axis=1))
-    metrics_frame.insert(loc=0, column='mean Precision', value=metrics_frame[precision_cols].mean(axis=1))
-    metrics_frame.insert(loc=0, column='std AUC', value=metrics_frame[auc_cols].std(axis=1))
-    metrics_frame.insert(loc=0, column='mean AUC', value=metrics_frame[auc_cols].mean(axis=1))
-    metrics_frame.insert(loc=0, column='model', value=model_name)
+        # Save Results (M)
 
-    metrics_frame.to_excel(metrics_file, index=False)
+        results_frame_morbidity = pd.DataFrame.from_dict(results_frame_morbidity)
+        for cat in classes_morbidity[::-1]:
+            results_frame_morbidity.insert(loc=0, column='std ACC ' + cat, value=results_frame_morbidity[acc_cat_cols[cat]].std(axis=1))
+            results_frame_morbidity.insert(loc=0, column='mean ACC ' + cat, value=results_frame_morbidity[acc_cat_cols[cat]].mean(axis=1))
+        results_frame_morbidity.insert(loc=0, column='std ACC', value=results_frame_morbidity[acc_cols].std(axis=1))
+        results_frame_morbidity.insert(loc=0, column='mean ACC', value=results_frame_morbidity[acc_cols].mean(axis=1))
+        results_frame_morbidity.insert(loc=0, column='model', value=model_name)
+
+        results_frame_morbidity.to_excel(writer_results, index=False, sheet_name='Morbidity')
+
+    with pd.ExcelWriter(metrics_file) as writer_metrics:
+        metrics_frame_morbidity = pd.DataFrame.from_dict(results_metrics_morbidity)
+        metrics_frame_morbidity.insert(loc=0, column='std F1', value=metrics_frame_morbidity[f1_cols].std(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='mean F1', value=metrics_frame_morbidity[f1_cols].mean(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='std Recall', value=metrics_frame_morbidity[recall_cols].std(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='mean Recall', value=metrics_frame_morbidity[recall_cols].mean(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='std Precision', value=metrics_frame_morbidity[precision_cols].std(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='mean Precision', value=metrics_frame_morbidity[precision_cols].mean(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='std AUC', value=metrics_frame_morbidity[auc_cols].std(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='mean AUC', value=metrics_frame_morbidity[auc_cols].mean(axis=1))
+        metrics_frame_morbidity.insert(loc=0, column='model', value=model_name)
+
+        metrics_frame_morbidity.to_excel(writer_metrics, index=False, sheet_name='Morbidity')
 
 
 if __name__ == '__main__':

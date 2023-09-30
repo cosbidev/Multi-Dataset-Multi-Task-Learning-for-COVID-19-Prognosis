@@ -1,5 +1,5 @@
 seed: 0
-exp_name: parallel_multitask
+exp_name: serial_multitask
 
 device:
   cuda_device: cuda:0
@@ -10,7 +10,7 @@ data:
   model_dir: models/Multi/5 # folder to save trained model
   report_dir: reports/Multi/5 # folder to save results
 
-  batch_size: 64
+  batch_size: 128
   modes:
     morbidity:
       img:
@@ -19,6 +19,7 @@ data:
         box_file: data/AIforCOVID/processed/box_data_AXF123.xlsx  # if equal to None do not select the bounding box
         mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
         fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
+
       classes: # name of classes
         - MILD
         - SEVERE
@@ -48,12 +49,13 @@ model:
   freezing: False
   model_name: multi
   task: multitask
-  head: parallel
+  head: serial
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.50 # dropout rate
   regression_type: area
   softmax: False # if True, the output is a probability distribution over the classes
-
+  beta: 0.5 # weights balance between task AFC-BX
+  train_backbone: True # if True, the backbone is trained
 trainer:
   loss_1: mse # loss function
   loss_2: mse # loss function
@@ -65,6 +67,6 @@ trainer:
     mode: min
     patience: 20 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-7
-    factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 100 # if the validation loss do not improve for x epochs stop training
+    factor: 0.70 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

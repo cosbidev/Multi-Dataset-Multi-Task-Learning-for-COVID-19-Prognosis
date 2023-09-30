@@ -1,6 +1,5 @@
 import itertools
 from collections import OrderedDict
-import torch.nn.functional as F
 import torch
 import torch.nn as nn
 import numpy as np
@@ -69,7 +68,7 @@ def get_backbone(model_name=''):
     elif model_name == "resnet152":
         model = models.resnet152(pretrained=True)
         in_features = model.fc.in_features
-    elif model_name == "densenet121":
+    elif "densenet121" in  model_name:
         model = models.densenet121(pretrained=True)
         in_features = model.classifier.in_features
         # model.classifier = nn.Linear(in_features=1024, out_features=len(class_names), bias=True)
@@ -153,54 +152,81 @@ def update_learning_rate(optimizer, scheduler, metric=None):
     lr = optimizer.param_groups[0]['lr']
     print('optimizer: %.7s  --learning rate %.7f -> %.7f' % (
         optimizer.__class__.__name__, old_lr, lr) if not old_lr == lr else 'Learning rate non modificato: %s' % (old_lr))
+def get_metrics_classification_severity(y_true, y_pred):
+    y_sampling_pred = np.zeros((y_pred.shape[0], y_pred.shape[1] + 3))
+    for i in range(y_pred.shape[0]):
+        for j in range(y_pred.shape[1]):
+            if y_pred[i, j] <= 0.5:
+                y_sampling_pred[i, j] = 0
+            elif 0.5 < y_pred[i, j] <= 1.5:
+                y_sampling_pred[i, j] = 1
+            elif 1.5 < y_pred[i, j] <= 2.5:
+                y_sampling_pred[i, j] = 2
+            elif 2.5 < y_pred[i, j]:
+                y_sampling_pred[i, j] = 3
+    for row in range(y_sampling_pred.shape[0]):
+        y_sampling_pred[row, 6] = np.sum(y_sampling_pred[row, :3])
+        y_sampling_pred[row, 7] = np.sum(y_sampling_pred[row, 3:6])
+        y_sampling_pred[row, 8] = np.sum(y_sampling_pred[row, :6])
 
 
-def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
-    """Measure the performance of a trained PyTorch model
-    Params
-    --------
-        model (PyTorch model): trained cnn for inference
-        test_loader (PyTorch DataLoader): test dataloader
-        topk (tuple of ints): accuracy to measure
+    max_value_l1 = np.sum(y_true[: ,-1])
+    max_value_exp = np.sum([np.sum([np.exp(y_true[row, i]) for i in range(6)] ) for row in range(y_true.shape[0])])
+    max_value_s = np.sum([np.sum([y_true[row, i]**2 for i in range(6)] ) for row in range(y_true.shape[0])])
+    min_value = 0
 
-    Returns
-    --------
-        results (DataFrame): results for each category
-    """
-    classes = []
-    losses = []
-    # Hold accuracy results
-    acc_results = np.zeros((len(test_loader.dataset), len(topk)))
-    i = 0
 
-    model.eval()
-    with torch.no_grad():
 
-        # Testing loop
-        for data, targets, file_name in tqdm(test_loader):
-            data = data.to(device)
-            targets = targets.to(device)
-            # Raw model output
-            out = model(data.float())
-            # Iterate through each example
-            for pred, true in zip(out, targets):
-                # Find topk accuracy
-                acc_results[i, :] = accuracy(pred.unsqueeze(0), true.unsqueeze(0), topk)
-                classes.append(idx_to_class[true.item()])
-                # Calculate the loss
-                loss = criterion(pred.view(1, len(idx_to_class)), true.view(1))
-                losses.append(loss.item())
-                i += 1
+    error_global = np.sum([np.abs(y_true[row, -1] - y_sampling_pred[row, -1]) for row in range(y_true.shape[0])])
 
-    # Send results to a dataframe and calculate average across classes
-    results = pd.DataFrame(acc_results, columns=[f'top{i}' for i in topk])
-    results['class'] = classes
-    results['loss'] = losses
-    results = results.groupby(classes).mean()
-    acc = acc_results.mean()
+    errors_l1 = [np.sum([np.abs(y_true[row, column] - y_sampling_pred[row, column]) for column in range(6)]) for row in range(y_true.shape[0])]
+    errors_exp = [np.sum([np.exp(np.abs(y_true[row, column] - y_sampling_pred[row, column])) for column in range(6)]) for row in range(y_true.shape[0])]
+    errors_squared = [np.sum([(y_true[row, column] - y_sampling_pred[row, column])**2 for column in range(6)]) for row in range(y_true.shape[0])]
 
-    return results.reset_index().rename(columns={'index': 'class'}), acc
+    # ERRORS COMPUTATION:
+    # distance L1 between predictions and true values for each area
+    Normalized_error_l1 = (np.sum(errors_l1) - min_value) / (max_value_l1 - min_value)
+    # distance L2 between predictions and true values for each area
+    Normalized_error_squared = (np.sum(errors_squared) - min_value) / (max_value_s - min_value)
+    # distance exp between predictions and true values for each area
+    Normalized_error_exp = (np.sum(errors_exp) - min_value) / (max_value_exp - min_value)
+    # ACCURACY COMPUTATION:
+    # accuracy distance exp between predictions and true values for each area
+    accuracy_distance_exp = 1 - Normalized_error_exp
+    # accuracy distance L1 between predictions and true values for each area
+    accuracy_distance_l1 = 1 - Normalized_error_l1
+    # accuracy distance L2 between predictions and true values for each area
+    accuracy_distance_squared = 1 - Normalized_error_squared
+    # Accuracy boolean for Global Score
+    accuracy_global_accuracy = sum(list(y_sampling_pred[:, -1] == y_true[:, -1])) / y_true.shape[0]
+    # Accuracy boolean for Lung R and Lung L
+    acc_lung_l = sum(list(y_sampling_pred[:, -2] == y_true[:, -2])) / y_true.shape[0]
+    acc_lung_r = sum(list(y_sampling_pred[:, -3] == y_true[:, -3])) / y_true.shape[0]
+    # Accuracy boolean for each area
+    acc_area_1 = sum(list(y_sampling_pred[:, 0] == y_true[:, 0])) / y_true.shape[0]
+    acc_area_2 = sum(list(y_sampling_pred[:, 1] == y_true[:, 1])) / y_true.shape[0]
+    acc_area_3 = sum(list(y_sampling_pred[:, 2] == y_true[:, 2])) / y_true.shape[0]
+    acc_area_4 = sum(list(y_sampling_pred[:, 3] == y_true[:, 3])) / y_true.shape[0]
+    acc_area_5 = sum(list(y_sampling_pred[:, 4] == y_true[:, 4])) / y_true.shape[0]
+    acc_area_6 = sum(list(y_sampling_pred[:, 5] == y_true[:, 5])) / y_true.shape[0]
+    # Accuracy boolean for score
+    acc_all_ = {'acc_boolean_accuracy': accuracy_global_accuracy,
+                'acc_lung_r': acc_lung_r,
+                'acc_lung_l': acc_lung_l,
+                'acc_a': acc_area_1,
+                'acc_b': acc_area_2,
+                'acc_c': acc_area_3,
+                'acc_d': acc_area_4,
+                'acc_e': acc_area_5,
+                'acc_f': acc_area_6
+                }
 
+
+    return (accuracy_distance_l1,
+            accuracy_distance_exp,
+            accuracy_distance_squared,
+            y_sampling_pred,
+            acc_all_)
 
 def get_metrics_regression(y_true, y_pred):
     """
@@ -224,7 +250,7 @@ def get_metrics_regression(y_true, y_pred):
         results.loc[area, 'L1'] = np.round(L1s_area, 4)
         results.loc[area, 'R2'] = np.round(r2_area, 4)
 
-    # REGIONS METRICS:
+    # REGIONS METRICS
     y_true_region_R = np.sum(y_true[:, :3], axis=1)
     y_true_region_L = np.sum(y_true[:, 3:6], axis=1)
     y_pred_region_R = np.sum(y_pred[:, :3], axis=1)
@@ -275,7 +301,7 @@ def get_metrics_regression(y_true, y_pred):
 
 
 def train_severity(model,
-
+                   cfg,
                    criterion,
                    optimizer,
                    scheduler,
@@ -291,7 +317,9 @@ def train_severity(model,
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = 1e6
     best_epoch = 0
-    history = {'train_loss': [], 'val_loss': [], 'train_metrics': [], 'val_metrics': []}
+    history = {'train_loss': [], 'val_loss': [], 'train_metrics': [], 'val_metrics': [],
+               'train_acc_G': [], 'val_acc_G': [], 'train_acc_RL': [], 'val_acc_RL': [], 'train_acc_LL': [], 'val_acc_LL': [],
+               'train_l1_acc': []}
 
     epochs_no_improve = 0
     early_stop = False
@@ -364,6 +392,8 @@ def train_severity(model,
 
             metrics_epoch = get_metrics_regression(real_target[:, :6], output_predictions)
 
+            (_,_,_,_,
+             acc_all_) = get_metrics_classification_severity(real_target, output_predictions)
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
             if phase == 'val':
                 scheduler.step(epoch_loss)
@@ -372,15 +402,18 @@ def train_severity(model,
             if phase == 'train':
                 history['train_loss'].append(epoch_loss)
                 history['train_metrics'].append(metrics_epoch)
+                history['train_acc_G'].append(acc_all_['acc_boolean_accuracy'])
+                history['train_acc_RL'].append(acc_all_['acc_lung_r'])
+                history['train_acc_LL'].append(acc_all_['acc_lung_l'])
 
             else:
                 history['val_loss'].append(epoch_loss)
                 history['val_metrics'].append(metrics_epoch)
-
-            print('{} Loss: {:.4f}'.format(phase, epoch_loss))
-
+                history['val_acc_G'].append(acc_all_['acc_boolean_accuracy'])
+                history['val_acc_RL'].append(acc_all_['acc_lung_r'])
+                history['val_acc_LL'].append(acc_all_['acc_lung_l'])
             # deep copy the model
-            if epoch > model.config['trainer']['warmup_epochs']:
+            if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
                     if epoch_loss < best_loss:
                         best_epoch = epoch
@@ -408,6 +441,8 @@ def train_severity(model,
 
     # Save model
     torch.save(model, os.path.join(model_dir, model_file_name))
+    print('-----------------------------------'
+          '\n Best Model Saved in: %s' % (os.path.join(model_dir, model_file_name)))
 
     return model, history
 
@@ -420,6 +455,7 @@ def train_MultiTask(model,
                     dataloaders,
                     model_dir,
                     device,
+                    cfg,
                     num_epochs=25,
                     max_epochs_stop=3,
                     regression_type='area'):
@@ -427,7 +463,7 @@ def train_MultiTask(model,
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_epoch_accuracy = 0.0
-
+    best_loss = 1e6
     best_epoch = 0
     history = {'train_loss': [],
                'train_loss_S': [],
@@ -477,13 +513,11 @@ def train_MultiTask(model,
                         Severity_head_outputs = outputs[1]
 
                         labels = labels.type(torch.float32)
-                        if model.config['model']['softmax']:
+                        if cfg['model']['softmax']:
                             outputs = nn.Softmax(dim=1)(outputs)
 
                         # Loss for multi-task
                         losses, selectors = criterion(outputs, labels, dataset_class=dataset_class)
-
-
 
                         # Selectors for data informations
                         BX_selector = selectors['BX_sel']
@@ -509,16 +543,12 @@ def train_MultiTask(model,
                         count_AFC += labels_AFC.size(0)
                         count_BX += labels_BX.size(0)
 
-
-
-
                         pbar.set_postfix(**{'Total loss (batch)': loss.item(), 'AFC loss (batch)': loss_AFC.item(), 'BX loss (batch)': loss_BX.item()})
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
                             optimizer.step()
-
 
                     # statistics
 
@@ -533,13 +563,13 @@ def train_MultiTask(model,
                     pbar.update(inputs.shape[0])
 
             epoch_loss_tot = running_loss['Loss_TOT'] / len(dataloaders[phase].dataset)
-            epoch_loss_AFC = running_loss['Loss_M'] / count_AFC
-            epoch_loss_BX = running_loss['Loss_S'] / count_BX
+            epoch_loss_AFC = running_loss['Loss_M'] / (count_AFC + 1e-10)
+            epoch_loss_BX = running_loss['Loss_S'] / (count_BX + 1e-10)
 
             if phase == 'val':
                 val_loss = epoch_loss_tot
                 update_learning_rate(optimizer=optimizer, scheduler=scheduler, metric=val_loss)
-            epoch_acc = running_corrects.double() / count_AFC
+            epoch_acc = (running_corrects.double() / (count_AFC + 1e-10)).item()
 
             # update history
             if phase == 'train':
@@ -556,7 +586,7 @@ def train_MultiTask(model,
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss_tot, epoch_acc))
 
             # deep copy the model
-            if epoch > model.config['trainer']['warmup_epochs']:
+            if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
                     if epoch_loss_tot < best_loss:
                         best_epoch = epoch
@@ -584,8 +614,9 @@ def train_MultiTask(model,
     model.load_state_dict(best_model_wts)
 
     # Save model
-    torch.save(model, os.path.join(model_dir, model_file_name + '_{0}_.pt'.format(best_epoch)))
-
+    torch.save(best_model_wts, os.path.join(model_dir, model_file_name + '.pt'))
+    print('-----------------------------------'
+          '\n Best Model-MultiTask Saved in: %s' % (os.path.join(model_dir, model_file_name)))
     # Format history
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
@@ -600,6 +631,7 @@ def train_morbidity(model,
                     dataloaders,
                     model_dir,
                     device,
+                    cfg,
                     num_epochs=25,
                     max_epochs_stop=3):
     since = time.time()
@@ -643,7 +675,7 @@ def train_morbidity(model,
                     with torch.set_grad_enabled(phase == 'train'):
 
                         outputs = model(inputs.float())
-                        if model.config['model']['softmax']:
+                        if cfg['model']['softmax']:
                             outputs = nn.Softmax(dim=1)(outputs)
 
                         _, preds = torch.max(outputs, 1)
@@ -671,15 +703,14 @@ def train_morbidity(model,
             # update history
             if phase == 'train':
                 history['train_loss'].append(epoch_loss)
-                history['train_acc'].append(epoch_acc)
-            else:
+                history['train_acc'].append(epoch_acc.item())
                 history['val_loss'].append(epoch_loss)
                 history['val_acc'].append(epoch_acc)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
             # deep copy the model
-            if epoch > model.config['trainer']['warmup_epochs']:
+            if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
                     if epoch_acc > best_acc and epoch != 0:
                         best_epoch = epoch
@@ -706,8 +737,9 @@ def train_morbidity(model,
     model.load_state_dict(best_model_wts)
 
     # Save model
-    torch.save(model, os.path.join(model_dir, model_file_name + '_{0}_.pt'.format(best_epoch)))
-
+    torch.save(model, os.path.join(model_dir, model_file_name + '.pt'))
+    print('-----------------------------------'
+          '\n Best Model Saved in: %s' % (os.path.join(model_dir, model_file_name)))
     # Format history
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
@@ -747,16 +779,128 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size).item())
         return res
-def evaluate_multi_task(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
-    """Measure the performance of a trained PyTorch model"""
-    pass
 
-def evaluate_regression(model, test_loader, criterion, idx_to_class, device, regression_type='area'):
+
+def evaluate_multi_task(model, test_loader, criterion, cfg, device, idx_to_class_AFC, topk=(1, 5)):
+    """Measure the performance of a trained MultiTask-MultiHead Model model"""
+
+    # Final accuracy results: (S)
+    S_preds = None
+    S_target = None
+    M_preds = []
+    M_target = []
+    print('-' * 10)
+    model.eval()
+    classes = []
+    loss_BX_test = 0.0
+    loss_AFC_test = []
+    M_results_acc_temp = []
+    # Each epoch has a training and validation phase
+    with torch.no_grad():
+
+        # Set model to evaluate mode
+        count_AFC = 0
+        count_BX = 0
+        batch_elaborated = 0
+        i = 0
+        # Iterate over data.
+        with tqdm(total=len(test_loader), desc=f'Testing MultiTask Model on dobule test-set (M + S)',
+                  unit='img') as pbar:
+            for inputs, labels, file_name, dataset_class in test_loader:
+
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                # forward
+
+                outputs = model(inputs.float())
+                # Outputs of the two heads
+                Morbidity_head_outputs = outputs[0]
+                Severity_head_outputs = outputs[1]
+                labels = labels.type(torch.float32)
+                if cfg['model']['softmax']:
+                    outputs = nn.Softmax(dim=1)(outputs)
+                # Loss for multi-task
+                losses, selectors = criterion(outputs, labels, dataset_class=dataset_class)
+                # Selectors for data informations
+                BX_selector = selectors['BX_sel']
+                AFC_selector = selectors['AFC_sel']
+                # Labels/Outputs BX
+                labels_BX = labels[BX_selector]
+                outputs_BX = Severity_head_outputs[BX_selector]
+                # Labels/Outputs AFC
+                labels_AFC = labels[AFC_selector][:, :criterion.dim_1]
+                outputs_AFC = Morbidity_head_outputs[AFC_selector]
+                # Calculate predictions and Labels for the Morbidity Task:
+                _, preds = torch.max(outputs_AFC, 1)
+                _, labels_gt = torch.max(labels_AFC, 1)
+                # Losses:
+                loss_AFC = losses['Loss_M']
+                loss_BX = losses['Loss_S']
+                # Updates Counts:
+                count_AFC += labels_AFC.size(0)
+                count_BX += labels_BX.size(0)
+
+                # BX aggregation
+                if batch_elaborated == 0:
+                    S_preds = outputs_BX.cpu().detach().numpy()
+                    S_target = labels_BX.cpu().detach().numpy()
+                else:
+                    S_preds = np.concatenate((S_preds, outputs_BX.cpu().detach().numpy()), 0)
+                    S_target = np.concatenate((S_target, labels_BX.cpu().detach().numpy()), 0)
+                loss_BX_test += loss_BX.item() * inputs.size(0)
+                batch_elaborated += 1
+
+                # AFC aggregation
+                M_target.append(labels_gt.data.cpu().numpy())
+                M_preds.append(preds.data.cpu().numpy())
+
+                # Iterate through each example
+
+                for pred, true, target in zip(outputs_AFC, labels_gt, labels_AFC):
+                    # Find topk accuracy
+                    M_results_acc_temp.append(accuracy(pred.unsqueeze(0), true.unsqueeze(0), topk))
+                    classes.append(true.item())
+                    loss_AFC_test.append(loss_AFC.item())
+                    i += 1
+    # AFC RESUME
+    # Hold accuracy results
+    M_results_acc = np.zeros((count_AFC, len(topk)))
+    for i,value in enumerate(M_results_acc_temp):
+        M_results_acc[i,:] = value
+
+    M_true_labels = list(itertools.chain(*M_target))
+    M_predicted_labels = list(itertools.chain(*M_preds))
+    M_precision = precision_score(M_true_labels, M_predicted_labels)
+    M_recall = recall_score(M_true_labels, M_predicted_labels)
+    M_f1 = f1_score(M_true_labels, M_predicted_labels)
+    M_roc_auc = roc_auc_score(M_true_labels, M_predicted_labels) if np.unique(M_true_labels).__len__() > 1 else 0.0
+    # Send results to a dataframe and calculate average across classes
+    results_morbidity = pd.DataFrame(M_results_acc, columns=[f'top{i}' for i in topk])
+    results_morbidity['class'] = classes
+
+    results_morbidity = results_morbidity.groupby(classes).mean()
+    results_morbidity['class'] = results_morbidity['class'].apply(lambda x: idx_to_class_AFC[x])
+
+    # BX RESUME
+    loss_test_severity = losses
+    metrics_severity = get_metrics_regression(S_target[:, :6], S_preds)
+
+    M_acc = M_results_acc.mean()
+    return results_morbidity, {
+        "Accuracy": M_acc,
+        "Precision": M_precision,
+        "Recall": M_recall,
+        "F1 Score": M_f1,
+        "ROC AUC Score": M_roc_auc
+    }, loss_test_severity, metrics_severity
+
+
+def evaluate_regression(model, test_loader, criterion, device, cfg, regression_type='area'):
     """Measure the performance of a trained PyTorch model on a regression task
     Params
     --------
         model (PyTorch model): trained cnn for inference
-        test_loader (PyTorch DataLoader): test dataloader
+        test_loader (PyTorch DataLoader):  dataloader
         topk (tuple of ints): accuracy to measure
 
     Returns
@@ -769,43 +913,110 @@ def evaluate_regression(model, test_loader, criterion, idx_to_class, device, reg
     model.eval()
     with torch.no_grad():
 
-        # Testing loop
+        # ing loop
 
         # Iterate over data.
         number_samples = 0
-        for k, (inputs, labels, file_name) in enumerate(test_loader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            # forward
-            # track history if only in train
-            outputs = model(inputs.float())
-            labels = labels.type(torch.float32)
-            # This criterion calculate MSE over single areas: (MEAN-SQUARED ERROR)
-            if regression_type == 'area':
-                labels_single_areas = labels[:, :6]
-                loss = criterion(outputs, labels_single_areas)
-            elif regression_type == 'global':
-                # This criterion calculate MSE over global score: (MEAN-SQUARED ERROR)
-                labels_global = labels[:, 9]
-                loss = criterion(outputs, labels_global)
-            elif regression_type == 'region':
-                # This criterion calculate MSE over single regions: (MEAN-SQUARED ERROR)
-                labels_regions = labels[:, 6:9]
-                loss = criterion(outputs, labels_regions)
-            losses += loss.item() * inputs.size(0)
-            if k == 0:
-                output_predictions = outputs.cpu().detach().numpy()
-                real_target = labels.cpu().detach().numpy()
-            else:
-                output_predictions = np.concatenate((output_predictions, outputs.cpu().detach().numpy()), 0)
-                real_target = np.concatenate((real_target, labels.cpu().detach().numpy()), 0)
+        with tqdm(test_loader, total=len(test_loader), desc=f'Testing Regression Model',
+                    unit='img') as pbar:
+            k = 0
+            filenames = []
+            for (inputs, labels, file_name) in pbar:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                # forward
+                # track history if only in train
+                outputs = model(inputs.float())
+                labels = labels.type(torch.float32)
+                # All the filenames
+                filenames.extend([os.path.basename(file_).split('.dcm')[0] for file_ in file_name])
 
-    loss_test = losses / len(test_loader.dataset)
-    metrics_test = get_metrics_regression(real_target[:, :6], output_predictions)
-    return metrics_test, loss_test
+                # This criterion calculate MSE over single areas: (MEAN-SQUARED ERROR)
+                if regression_type == 'area':
+                    labels_single_areas = labels[:, :6]
+                    loss = criterion(outputs, labels_single_areas)
+                elif regression_type == 'global':
+                    # This criterion calculate MSE over global score: (MEAN-SQUARED ERROR)
+                    labels_global = labels[:, 9]
+                    loss = criterion(outputs, labels_global)
+                elif regression_type == 'region':
+                    # This criterion calculate MSE over single regions: (MEAN-SQUARED ERROR)
+                    labels_regions = labels[:, 6:9]
+                    loss = criterion(outputs, labels_regions)
+                losses += loss.item() * inputs.size(0)
+                if k == 0:
+                    output_predictions = outputs.cpu().detach().numpy()
+                    real_target = labels.cpu().detach().numpy()
+                else:
+                    output_predictions = np.concatenate((output_predictions, outputs.cpu().detach().numpy()), 0)
+                    real_target = np.concatenate((real_target, labels.cpu().detach().numpy()), 0)
+                k += 1
+
+    # Calculate LOSS + Metrics
+    loss_ = losses / len(test_loader.dataset)
+    metrics_ = get_metrics_regression(real_target[:, :6], output_predictions)
+    (accuracy_distance_l1,
+     accuracy_distance_exp,
+     accuracy_distance_squared,
+     y_sampling_pred,
+     acc_all_) = get_metrics_classification_severity(real_target, output_predictions)
+
+    # Save performances results
+    metrics_to_add_CC = {keys + '_CC':values for keys, values in metrics_.loc['CC', ['LL', 'RL', 'G']].to_dict().items()}
+    metrics_to_add_L1 = {keys + '_L1':values for keys, values in metrics_.loc['L1', ['LL', 'RL', 'G']].to_dict().items()}
+
+    results_metrics_resume = {
+        'Accuracy L1': accuracy_distance_l1,
+
+        'Accuracy Exp': accuracy_distance_exp,
+
+        'Accuracy Squared': accuracy_distance_squared,
+
+        'Acc_G': acc_all_['acc_boolean_accuracy'],
+
+        'Acc_LR': acc_all_['acc_lung_r'],
+
+        'Acc_LL': acc_all_['acc_lung_l'],
+
+        **metrics_to_add_L1,
+        **metrics_to_add_CC
+        }
 
 
-def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
+    # Prediction by patient's image with floating values
+    results_float = {'A_pred': output_predictions[:,0],
+                     'B_pred': output_predictions[:,1],
+                     'C_pred': output_predictions[:,2],
+                     'D_pred': output_predictions[:,3],
+                     'E_pred': output_predictions[:,4],
+                     'F_pred': output_predictions[:,5],
+                     'LR_pred': y_sampling_pred[:,-3],
+                     'LL_pred': y_sampling_pred[:,-2],
+                     'G_pred': y_sampling_pred[:,-1]}
+
+    # Lets save each zone with a name
+    labels = {key.split('_')[0] + 'y': list() for key in results_float.keys()}
+    for row in range(real_target.shape[0]):
+        for col in zip(range(real_target.shape[1]), labels.keys()):
+            labels[col[1]].append(real_target[row, col[0]])
+
+    # ARRAY ALL
+    labels = {key : np.array(values) for key, values in labels.items()}
+
+    # COMMON KEYS
+    list_common_keys = list(results_float.keys()) + list(labels.keys())
+    # We have to alternate all the columns name and save all the information about all the prediction of the network
+    results_for_images = pd.DataFrame(columns= ['Patient']+ list(itertools.chain(*[ [list_common_keys[i], list_common_keys[i+9]] for i in range(9)])))
+
+    new_info = pd.DataFrame({'Patient':filenames,**results_float, **labels})
+    for row in new_info.iterrows():
+        results_for_images.loc[len(results_for_images)] = dict(row[1])
+
+
+    return metrics_, loss_, results_metrics_resume, results_for_images
+
+
+def evaluate_morbidity(model, test_loader, criterion, idx_to_class, device, cfg, topk=(1, 5)):
     """Measure the performance of a trained PyTorch model
     Params
     --------
@@ -827,23 +1038,27 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
     predicted_labels = []
     model.eval()
     with torch.no_grad():
-
+        results_for_images = pd.DataFrame(columns=['Patient', 'Predicted', 'labels', 'probs'])
         # Testing loop
         for data, targets, file_name in tqdm(test_loader):
             data = data.to(device)
             targets = targets.to(device)
             # Raw model output
-            outputs = model(data.float())
-            if model.config['model']['softmax']:
+            outputs = nn.Softmax(dim=1)(model(data.float()))
+            if cfg['model']['softmax']:
                 outputs = nn.Softmax(dim=1)(outputs)
 
-            _, preds = torch.max(outputs, 1)
+            values_probs, preds = torch.max(outputs, 1)
             _, labels_gt = torch.max(targets, 1)
 
             true_labels.append(labels_gt.data.cpu().numpy())
             predicted_labels.append(preds.data.cpu().numpy())
 
             # Iterate through each example
+            new_info = pd.DataFrame({'Patient': file_name, 'Predicted': preds.data.cpu().numpy(), 'labels': labels_gt.data.cpu().numpy(), 'probs': values_probs.cpu().numpy()} )
+            for row in new_info.iterrows():
+                results_for_images.loc[len(results_for_images)] = dict(row[1])
+
 
             for pred, true, target in zip(outputs, labels_gt, targets):
                 # Find topk accuracy
@@ -853,6 +1068,7 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
                 loss = criterion(pred, target)
                 losses.append(loss.item())
                 i += 1
+
 
     # Calculate metrics # we put the label to 1 if the second neuron is giving high porbability, or 0 in the other case
 
@@ -864,14 +1080,14 @@ def evaluate(model, test_loader, criterion, idx_to_class, device, topk=(1, 5)):
     f1 = f1_score(true_labels, predicted_labels)
     roc_auc = roc_auc_score(true_labels, predicted_labels) if np.unique(true_labels).__len__() > 1 else 0.0
     # Send results to a dataframe and calculate average across classes
-    results = pd.DataFrame(acc_results, columns=[f'top{i}' for i in topk])
-    results['class'] = classes
-    results['loss'] = losses
+    results_classes = pd.DataFrame(acc_results, columns=[f'top{i}' for i in topk])
+    results_classes['class'] = classes
+    results_classes['loss'] = losses
 
-    results = results.groupby(classes).mean()
-    results['class'] = results['class'].apply(lambda x: idx_to_class[x])
+    results_classes = results_classes.groupby(classes).mean()
+    results_classes['class'] = results_classes['class'].apply(lambda x: idx_to_class[x])
     acc = acc_results.mean()
-    return results, {
+    return results_for_images, results_classes, {
         "Accuracy": acc,
         "Precision": precision,
         "Recall": recall,
@@ -918,6 +1134,7 @@ class MorbidityModel(nn.Module):
         self.class_to_id = {c: i for i, c in enumerate(self.classes)}
         # BACKBONE
         self.backbone, in_features = get_backbone(backbone)
+        self.softmax = nn.Softmax(dim=1)
 
         # HEAD CLASSIFICATION
         if 'squeezenet' in backbone:
@@ -926,6 +1143,22 @@ class MorbidityModel(nn.Module):
                   nn.Conv2d(512, len(self.classes), kernel_size=(1, 1), stride=(1, 1))
                   )]
             ))
+        elif 'densenet121_CXR' in backbone:
+            path_to_chestXnet_model = './weights/chestXnet/checkpoint'
+            checkpoint = torch.load(path_to_chestXnet_model, map_location=lambda storage, loc: storage)
+            model = checkpoint['model']
+
+            prefix = 'classifier.'
+            adapted_dict = {k: v for k, v in model.state_dict().items()
+                            if not k.startswith(prefix)}
+
+            print('Loading pretrained model on ChestXNet, from: ', path_to_chestXnet_model)
+            self.backbone.load_state_dict(adapted_dict, strict=False)
+            #
+            New_classification_Head = nn.Sequential(OrderedDict(
+                [('classification-Head',
+                  nn.Linear(in_features=in_features, out_features=len(self.classes), bias=True))]))
+
         else:
             New_classification_Head = nn.Sequential(OrderedDict(
                 [('classification-Head',
@@ -959,6 +1192,7 @@ class MorbidityModel(nn.Module):
 
     def forward(self, x):
         x = self.backbone(x)
+        x = self.softmax(x)
         return x
 
     def freeze_backbone(self):
@@ -987,6 +1221,20 @@ class SeverityModel(nn.Module):
                   nn.Conv2d(512, len(self.labels), kernel_size=(1, 1), stride=(1, 1))
                   )]
             ))
+        elif 'densenet121_CXR' in backbone:
+            path_to_chestXnet_model = './weights/chestXnet/checkpoint'
+            checkpoint = torch.load(path_to_chestXnet_model, map_location=lambda storage, loc: storage)
+            model = checkpoint['model']
+
+            prefix = 'classifier.'
+            adapted_dict = {k: v for k, v in model.state_dict().items()
+                            if not k.startswith(prefix)}
+            self.backbone.load_state_dict(adapted_dict, strict=False)
+
+            New_classification_Head = nn.Sequential(OrderedDict(
+                [(
+                    'classification-Head', nn.Linear(in_features=in_features, out_features=len(self.labels), bias=True))]))
+
         else:
             New_classification_Head = nn.Sequential(OrderedDict(
                 [(
@@ -997,24 +1245,27 @@ class SeverityModel(nn.Module):
 
         change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
 
-        start_counter_seq = 0
-        # Freeze Backbone
-        layers_seq_to_freeze = np.ceil(
-            len([module for module in list(self.backbone.modules())[1:] if isinstance(module, nn.Sequential)]) / 5)
-        for module in list(self.backbone.modules())[1:]:
-            print('ANALIZE THIS: ', module.__class__)
-            if isinstance(module, nn.Sequential):
-                start_counter_seq += 1
-                print('***** FREEZING *****: SEQ layer: ', module.__class__)
+        if self.config['model']['freezing']:
+            start_counter_seq = 0
+            # Freeze Backbone
+
+            layers_seq_to_freeze = np.ceil(
+                len([module for module in list(self.backbone.modules())[1:] if isinstance(module, nn.Sequential)]) / 5)
+
+            for module in list(self.backbone.modules())[1:]:
+                print('ANALIZE THIS: ', module.__class__)
+                if isinstance(module, nn.Sequential):
+                    start_counter_seq += 1
+                    print('***** FREEZING *****: SEQ layer: ', module.__class__)
+                    for i, param in enumerate(list(module.parameters())):
+                        param.requires_grad = False
+
+                print('***** FREEZING *****: SING layer: ', module.__class__)
                 for i, param in enumerate(list(module.parameters())):
                     param.requires_grad = False
 
-            print('***** FREEZING *****: SING layer: ', module.__class__)
-            for i, param in enumerate(list(module.parameters())):
-                param.requires_grad = False
-
-            if start_counter_seq == layers_seq_to_freeze:
-                break
+                if start_counter_seq == layers_seq_to_freeze:
+                    break
 
         change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
 
@@ -1035,12 +1286,11 @@ def get_MultiTaskModel(kind='parallel', backbone='', cfg=None, device=None, *arg
     if kind == 'parallel':
         return ParallelMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
     if kind == 'serial':
-        return SeverityModel(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
+        return SerialMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
 
 
 def MSE_loss(outputs, labels):
-
-    number =  (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) if (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) != 0 else 1
+    number = (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) if (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) != 0 else 1
 
     return torch.nansum((outputs - labels) ** 2) / number
 
@@ -1074,7 +1324,6 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         index = [(label == 1).item() for label in labels]
 
         mask[index] = torch.ones(1, dim)
-
 
         return mask
 
@@ -1115,6 +1364,7 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         Loss_TOT = loss_1 + loss_2
         return {'Loss_TOT': Loss_TOT, 'Loss_M': loss_1, 'Loss_S': loss_2}, {'AFC_sel': AFC_selector, 'BX_sel': BX_selector}
 
+
 def init_weights(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform(m.weight)
@@ -1139,8 +1389,7 @@ class ParallelMultiObjective(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.backbone, self.in_features = get_backbone(backbone)
         self.drop_rate = self.config['model']['dropout_rate']
-        self.train_backbone = True
-
+        self.train_backbone = self.config['model']['train_backbone']
 
         # HEAD CLASSIFICATION : MORBIDITY
         # HEAD CLASSIFICATION : MORBIDITY
@@ -1194,19 +1443,20 @@ class ParallelMultiObjective(nn.Module):
         :return: None
         """
         # TODO Adapt this one ?
+        print('LOADING BACKBONE WEIGHTS (1/2 * S + 1/2 * M)')
         this_model_params = dict(self.named_parameters())
         for (name_m, param_morbidity), (name_s, param_severity) in zip(morbidity_params, severity_params):
             if name_m == name_s:
-                print('ANALYZING: (S) ', name_s, ' ; (M) ', name_m)
+
                 if name_m in this_model_params and name_s in this_model_params:
                     this_model_params[name_m].data.copy_((Beta * param_morbidity.data + (1 - Beta) * param_severity.data))
         self.load_state_dict(this_model_params, strict=False)
 
     def forward(self, x):
         x_hat = self.backbone(x)
-        out1 = self.Head_Morbidity(x_hat)
-        out2 = self.Head_Severity(x_hat)
-        return out1, out2
+        out_morbidity = self.Head_Morbidity(x_hat)
+        out_severity = self.Head_Severity(x_hat)
+        return out_morbidity, out_severity
 
 
 class SerialMultiObjective(nn.Module):
@@ -1233,11 +1483,15 @@ class SerialMultiObjective(nn.Module):
         self.Head_Morbidity = nn.Sequential(
             OrderedDict([
 
-                ('M_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                ('M_linear0', nn.Linear(in_features=len(self.classes_severity), out_features=32, bias=True)),
                 ('M_ReLU0', nn.ReLU()),
                 ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
 
-                ('M_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                ('M_linear1', nn.Linear(in_features=32, out_features=64, bias=True)),
+                ('M_ReLU2', nn.ReLU()),
+                ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
+
+                ('M_linear1', nn.Linear(in_features=64, out_features=32, bias=True)),
                 ('M_ReLU2', nn.ReLU()),
                 ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
 
@@ -1283,6 +1537,9 @@ class SerialMultiObjective(nn.Module):
 
     def forward(self, x):
         x_hat = self.backbone(x)
-        out1 = self.Head_Morbidity(x_hat)
-        out2 = self.Head_Severity(x_hat)
-        return out1, out2
+
+        out_severity = self.Head_Severity(x_hat)
+
+        out_morbidity = self.Head_Morbidity(out_severity)
+
+        return out_morbidity, out_severity

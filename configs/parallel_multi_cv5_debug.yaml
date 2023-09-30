@@ -8,8 +8,8 @@ device:
 data:
   cv: 5
 
-  model_dir: models/Multi/5 # folder to save trained model
-  report_dir: reports/Multi/5 # folder to save results
+  model_dir: models/Multi/DBG # folder to save trained model
+  report_dir: reports/Multi/DBG # folder to save results
 
   batch_size: 64
   modes:
@@ -54,13 +54,15 @@ model:
   dropout_rate: 0.50 # dropout rate
   regression_type: area
   softmax: False # if True, the output is a probability distribution over the classes
+  beta: 0.5 # weights balance between task AFC-BX
+  train_backbone: True # if True, the backbone is trained
 
 trainer:
   loss_1: mse # loss function
   loss_2: mse # loss function
   warmup_epochs: 50 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
   optimizer:
-    lr: 0.00005 # initial learning rate
+    lr: 0.001 # initial learning rate
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min

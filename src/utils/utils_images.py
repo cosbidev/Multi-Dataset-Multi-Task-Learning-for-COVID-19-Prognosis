@@ -59,7 +59,6 @@ def PreprocessDicom(img, clip_limit=0.01, med_filt=3, clahe=False, filter=False,
     :param med_filt: median filter kernel size
     :return: (Rows, Cols)
     """
-    img = img.astype('float32')/img.max()
     if clahe:
         img = equalize_adapthist(
             img, clip_limit=clip_limit)
@@ -200,13 +199,13 @@ def get_mask(img, mask): # todo: img[~mask]
     return img * boolean_mask
 
 
-def get_box(img, box, masked=False, border_add=10):
+def get_box(img, box_, masked=False, border_add=10, **kwargs):
     """
     Returns the image inside the bounding box, if the parameter masked is true the image is padded with zeros; otherwise
     it's needed to pad the image with real values from the image. The padding is done in order to have a squared image
     Args:
         img: ndarray of shape (H, W)
-        box: list of 4 values [x, y, w, h]
+        box_: list of 4 values [x, y, w, h]
         masked: ndarray of shape (H, W), type bool
 
     Returns:
@@ -214,7 +213,7 @@ def get_box(img, box, masked=False, border_add=10):
     """
 
     # BBOX parameters = [x, y, w, h]
-    box = [int(b) for b in box]
+    box = [int(b) for b in box_]
     # Sides
     if border_add == 0:
         pass
@@ -249,6 +248,8 @@ def get_box(img, box, masked=False, border_add=10):
             img_pad = np.pad(img_to_box, ((0, 0), (int(left_down), int(rigth_top))), constant_values=(0, 0))
         elif l_h < l_w:
             img_pad = np.pad(img_to_box, ((int(left_down), int(rigth_top)), (0, 0)), constant_values=(0, 0))
+        else:
+            return img_to_box
         return img_pad
 
     else:
@@ -302,6 +303,9 @@ def normalize(img, min_val=None, max_val=None):
         min_val = img.min()
     if not max_val:
         max_val = img.max()
+    if max_val == min_val:
+        print('Warning: max and min values are equal')
+        return img
     img = (img - min_val) / (max_val - min_val)
     # img -= img.mean()
     # img /= img.std()

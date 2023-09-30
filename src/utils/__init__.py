@@ -6,3 +6,4 @@ from .utils_images import remove_small_regions, loadData, normalize, get_mask, g
     convert_dicom_to_image_BRIXIA, Volume_mask_and_or, PreprocessDicom, find_bboxes
 from .utils_model import *
 from .utils_visualization import plot_training
+from .utils_reports import compute_report_metrics

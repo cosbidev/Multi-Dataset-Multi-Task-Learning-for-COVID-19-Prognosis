@@ -13,7 +13,7 @@ data:
   classes: # name of classes
     - MILD
     - SEVERE
-  batch_size: 64
+  batch_size: 256
   modes:
     img:
       loader_name: custom_preprocessing

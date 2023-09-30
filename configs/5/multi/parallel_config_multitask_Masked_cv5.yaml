@@ -6,11 +6,11 @@ device:
   gpu_num_workers: 6
 
 data:
-  cv: loCo18
-  model_dir: models/Multi/loCo18 # folder to save trained model
-  report_dir: reports/Multi/loCo18 # folder to save results
+  cv: 5
+  model_dir: models/Multi/5 # folder to save trained model
+  report_dir: reports/Multi/5 # folder to save results
 
-  batch_size: 64
+  batch_size: 128
   modes:
     morbidity:
       img:
@@ -18,7 +18,7 @@ data:
         img_dir: data/AIforCOVID # path for the dicom directory
         box_file: data/AIforCOVID/processed/box_data_AXF123.xlsx  # if equal to None do not select the bounding box
         mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
-        fold_dir: data/processed/AFC/loCo
+        fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
       classes: # name of classes
         - MILD
         - SEVERE
@@ -28,7 +28,7 @@ data:
         img_dir: data/BRIXIA # path for the dicom directory
         box_file: data/BRIXIA/processed/box_data_BX.xlsx  # if equal to None do not select the bounding box
         mask_dir: data/BRIXIA/processed/masks  # if equal to None do not select lung
-        fold_dir: data/processed/BX/loCo
+        fold_dir: data/processed/BX/5 # folder where upload the CV splits at patient level
       classes: # name of classes
         - A
         - B
@@ -53,7 +53,8 @@ model:
   dropout_rate: 0.50 # dropout rate
   regression_type: area
   softmax: False # if True, the output is a probability distribution over the classes
-
+  beta: 0.5 # weights balance between task AFC-BX
+  train_backbone: True # if True, the backbone is trained
 trainer:
   loss_1: mse # loss function
   loss_2: mse # loss function
@@ -65,6 +66,6 @@ trainer:
     mode: min
     patience: 20 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-7
-    factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 100 # if the validation loss do not improve for x epochs stop training
+    factor: 0.70 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300

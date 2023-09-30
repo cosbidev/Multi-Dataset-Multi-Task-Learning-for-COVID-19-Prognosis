@@ -13,7 +13,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" />
-    <option name="PARAMETERS" value="--cfg_file configs/bx_loCo_debug.yaml --id_exp debug --model_name resnet18" />
+    <option name="PARAMETERS" value="--cfg_file configs/bx_cv5_debug.yaml --id_exp 1 --model_name resnet18 -c" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

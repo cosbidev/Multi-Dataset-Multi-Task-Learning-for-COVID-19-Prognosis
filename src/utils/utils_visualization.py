@@ -41,7 +41,7 @@ def plot_training_multi(history, plot_training_dir):
     plt.close()
     plt.figure(figsize=(8, 6))
     for i, c in enumerate(['train_acc', 'val_acc']):
-        plt.plot(history[c].item(), label=c, color=colors[i])
+        plt.plot(history[c], label=c, color=colors[i])
     plt.legend()
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
@@ -52,113 +52,32 @@ def plot_training_multi(history, plot_training_dir):
 
 def plot_regression(history, plot_training_dir):
     # Training results Loss function
+    colors = ['r', 'b']
     plt.figure(figsize=(8, 6))
-    for c in ['train_loss', 'val_loss']:
-        plt.plot(history[c], label=c)
+    for i, c in enumerate(['train_loss', 'val_loss']):
+        plt.plot(history[c], label=c, color=colors[i])
     plt.legend()
     plt.xlabel('Epoch')
     plt.ylabel('MSE error on Global Score')
     plt.title('Training and Validation Losses')
     plt.savefig(os.path.join(plot_training_dir, "Loss"))
     plt.close()
-    """    # Training results
-    metrics_train_x_epochs = history['train_metrics']
-    metrics_val_x_epochs = history['val_metrics']
 
-    # CC coeff.
-    epochs = np.arange(len(metrics_train_x_epochs))
+    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
+    list_axis = axs.tolist()
+    name_of_accuracies = ['G', 'LL', 'RL']
+    for name_acc, ax in zip(name_of_accuracies, list_axis):
+        for i, c in enumerate(['train_acc_' + name_acc, 'val_acc_' + name_acc]):
+            ax.plot(history[c], label=c, color=colors[i])
 
-    columns = metrics_train_x_epochs[0].columns.to_list()
-    indexes = metrics_train_x_epochs[0].index.to_list()
-    # Each area score
+            ax.set_xlabel('Epoch', fontsize=15)
+            ax.set_ylabel('ACC on {} score'.format(name_acc), fontsize=15)  # 'Accuracy'')
+            ax.legend(fontsize=15)
 
+    plt.suptitle('Train and Validation Accuracy : Severity', fontsize=30)
+    plt.savefig(os.path.join(plot_training_dir, "ACC_zones_severity.png"))
+    plt.close()
 
-    # TRAINING SCORES:
-    # Plotting the scores over epochs
-    list_of_scores = {phase: {index: [] for index in indexes} for phase in ['train', 'val']}
-
-    for phase_metrics, phase in zip([metrics_train_x_epochs, metrics_val_x_epochs], ['train', 'val']):
-        for index in indexes:
-            score_by_area = {column: [] for column in columns}
-            for column in columns:
-                score_by_area[column].append(list(df.loc[index, column] for df in phase_metrics))
-            list_of_scores[phase][index].append(score_by_area)
-
-
-    # Plotting the scores over epochs
-    dictionary_of_name = {'CC': 'Pearson Correlation Coefficient (CC)', 'MAE': 'Mean Absolute Error (MAE)',
-                          'MSE': 'Mean Square Error (MSE)', 'R2': 'R2 Score', 'L1': 'L1 Loss',
-                          'SD': 'Standard Deviation (SD)'}
-
-    colors = ['b', 'g', 'r', 'c', 'm', 'y']
-    for index in indexes:
-        fig, axs = plt.subplots(2, 3, figsize=(10, 6), sharex=True)  # Adjust the figure size as needed
-        counter = 0
-        for column, color, ax in zip(columns[:6], colors, fig.get_axes()):
-            counter += 1
-            for phase in ['train', 'val']:
-                score = np.array(list_of_scores[phase][index][0][column][0])
-                ax.plot(epochs, score, label=column + '_' + phase, linestyle='--' if phase == 'val' else '-',
-                        marker='*' if phase == 'train' else 'o', color=color)
-
-            ax.grid(True)
-            ax.legend()
-
-            ax.set_xlabel('' if counter <= 3 else 'Epochs')
-            ax.set_title(f'{column}')
-            plt.xticks(fontsize=10)
-            plt.yticks(fontsize=10)
-
-        plt.suptitle(f'{dictionary_of_name[index]} by Areas Scores, Analysis over Epochs', color = 'r')
-        plt.legend()
-        plt.savefig(os.path.join(plot_training_dir, f"{index}_by_area"))
-        plt.close()
-    colors = ['b',  'r']
-    for index in indexes:
-        fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)  # Adjust the figure size as needed
-        counter = 0
-        for column, color, ax in zip(columns[6:8], colors, fig.get_axes()):
-            counter += 1
-            for phase in ['train', 'val']:
-                score = np.array(list_of_scores[phase][index][0][column][0])
-                ax.plot(epochs, score, label=column + '_' + phase, linestyle='--' if phase == 'val' else '-',
-                        marker='*' if phase == 'train' else 'o', color=color)
-
-            ax.grid(True)
-            ax.legend()
-
-            ax.set_xlabel('' if counter <= 3 else 'Epochs')
-            ax.set_title(f'{column}')
-            plt.xticks(fontsize=10)
-            plt.yticks(fontsize=10)
-
-        plt.suptitle(f'{dictionary_of_name[index]} by Regions Scores, Analysis over Epochs', color = 'r'    )
-        plt.legend()
-        plt.savefig(os.path.join(plot_training_dir, f"{index}_by_regions"))
-        plt.close()
-    colors = ['k']
-    for index in indexes:
-        fig, axs = plt.subplots(1, 1, figsize=(10, 6), sharex=True)  # Adjust the figure size as needed
-        counter = 0
-        for column, color, ax in zip([columns[-1]], colors, fig.get_axes()):
-            counter += 1
-            for phase in ['train', 'val']:
-                score = np.array(list_of_scores[phase][index][0][column][0])
-                ax.plot(epochs, score, label=column + '_' + phase, linestyle='--' if phase == 'val' else '-',
-                        marker='*' if phase == 'train' else 'o', color=color)
-
-            ax.grid(True)
-            ax.legend()
-
-            ax.set_xlabel('' if counter <= 3 else 'Epochs')
-            ax.set_title(f'{column}')
-            plt.xticks(fontsize=10)
-            plt.yticks(fontsize=10)
-
-        plt.suptitle(f'{dictionary_of_name[index]} on Global Scores, Analysis over Epochs', color = 'r'    )
-        plt.legend()
-        plt.savefig(os.path.join(plot_training_dir, f"{index}_global"))
-        plt.close()"""
 
 
 def plot_training(history, plot_training_dir):

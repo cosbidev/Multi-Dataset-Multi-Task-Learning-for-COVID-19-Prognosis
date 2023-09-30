@@ -3,5 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$USER_HOME$/Desktop/PHD/PROGETTI/ITA-CINA/ANNO1/CODICE_ITA_CHINA/ItaChinaCovid19" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/github_utils/reproduce-chexnet" vcs="Git" />
   </component>
 </project>

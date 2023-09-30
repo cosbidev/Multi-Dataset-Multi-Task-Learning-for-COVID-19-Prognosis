@@ -13,7 +13,7 @@ data:
   classes: # name of classes
     - MILD
     - SEVERE
-  batch_size: 64
+  batch_size: 256
   modes:
     img:
       loader_name: custom_preprocessing
@@ -44,7 +44,7 @@ trainer:
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min
-    patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+    patience: 20 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-6
     factor: 0.7 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 50 # if the validation loss do not improve for x epochs stop training

@@ -27,54 +27,31 @@ def extract_job_id(sbatch_output):
 
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
-parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str, choices=['5', 'L', '10'],
+parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,
                     default='5')
 parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
-                    choices=['morbidity', 'severity', 'both'], default='morbidity')
+                    choices=['morbidity', 'severity', 'multi'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
-[	
-    "densenet201",
+[   "densenet121_CXR",
     "densenet121",
-    "densenet161",
-    "googlenet",
-    "mobilenet_v2", 
-    "squeezenet1_0",
-    "squeezenet1_1",
-    "densenet121",
-    "vgg11_bn",
-    "densenet169",
-    "wide_resnet50_2",
-    "vgg11",
-    "squeezenet1_0",
-    "squeezenet1_1",
-    "alexnet",
-    "vgg11_bn",
-    "vgg16",
-    "vgg16_bn",
-    "vgg13_bn",
-    "vgg13",
+    "mobilenet_v2",
     "resnet18",
     "resnet34",
     "resnet50",
-
     "resnet101",
-    "resnet152",
-    "googlenet",
+    "resnext50_32x4d",
     "shufflenet_v2_x0_5",
     "shufflenet_v2_x1_0",
-    "resnext50_32x4d",
+    "squeezenet1_0",
+    "squeezenet1_1",
     "wide_resnet50_2",
 ])
 
-"""    "resnet18",
-    "resnet34",
-    "resnet50",
-"""
 
 
-
-parser.add_argument("-id", "--exp_id", help="not freezed layers", default=1, type=int)
+parser.add_argument("-id", "--exp_id", help="not freezed layers")
+parser.add_argument("-c", "--checkpoint", help="Number of folder", action='store_true')
 args = parser.parse_args()
 
 config_selector = {
@@ -82,11 +59,22 @@ config_selector = {
     {
         '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
         'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
+        'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
     },
     'severity':
         {
             '5': '../../configs/bash_experiments/experiment_setups_severity_5.json',
-            'L': '../../configs/bash_experiments/experiment_setups_severity_loCo.json'
+            'L': '../../configs/bash_experiments/experiment_setups_severity_loCo.json',
+            'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
+        },
+    'multi':
+        {
+            'P5': '../../configs/bash_experiments/experiment_setups_multitask_parallel_5.json',
+            'PL6': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_6.json',
+            'PL18': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_18.json',
+            'S5': '../../configs/bash_experiments/experiment_setups_multitask_serial_5.json',
+            'SL6': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_6.json',
+            'SL18': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_18.json',
         }
 }
 
@@ -105,7 +93,7 @@ if __name__ == "__main__":
 
 
     for i, exp_config in enumerate(experiment_list):
-
+        # pick models
         args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
 
         print('exp ', exp_config, 'models', args.model_names)
@@ -116,15 +104,20 @@ if __name__ == "__main__":
 
             # Imposta la variabile d'ambiente con il dizionario
             os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
-                                                                       exp_config['config_file'])
+                                                                  exp_config['config_file'])
+            if args.checkpoint:
+                os.environ["checkpoint"] = "-c"
+
             os.environ["model_name"] = str(model)
             os.environ["id_exp"] = str(args.exp_id)
             print("modality", args.modality_kind,
                   "model", model, "\n",
                   "id", args.exp_id,"\n",
                   "fold", exp_config['fold'],"\n",
-                  "config", exp_config['config_file'])
-            launch_slurm_job('train_severity.sh' if args.modality_kind == "severity" else 'train_morbidity.sh',
+                  "config", exp_config['config_file'],"\n",
+                  "checkpoint", args.checkpoint, "\n",)
+            bash_file = {'severity': 'train_severity.sh', 'morbidity': 'train_morbidity.sh', 'multi': 'train_multi.sh'}
+            launch_slurm_job(bash_file[args.modality_kind],
                              os.environ)
 
 

@@ -1,0 +1,5 @@
+checkpoint: True
+
+device:
+  cuda_device: cuda:0
+  gpu_num_workers: 4

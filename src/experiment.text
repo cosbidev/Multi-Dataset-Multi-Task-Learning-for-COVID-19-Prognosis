@@ -1,0 +1,5 @@
+% sbatch exp_morbidity_parallel.sh -c 5 -i baseline -h a
+
+% sbatch exp_morbidity_parallel.sh -c L -i baseline -h a
+
+

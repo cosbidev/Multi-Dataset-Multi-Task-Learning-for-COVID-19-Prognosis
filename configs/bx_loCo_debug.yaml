@@ -17,7 +17,7 @@ data:
     - D
     - E
     - F
-  batch_size: 64
+  batch_size: 128
   modes:
     img:
       loader_name: custom_preprocessing
@@ -35,7 +35,7 @@ data:
 model:
   model_name: single
   task: severity
-  pretrained: 1 # if this parameter is None, the model is trained from scratch
+  pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.25
   regression_type: area
   freezing: False
@@ -52,4 +52,4 @@ trainer:
     min_lr: 1e-6
     factor: 0.7 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 50 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 10
+  max_epochs: 2

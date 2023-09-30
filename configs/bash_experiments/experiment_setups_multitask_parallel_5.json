@@ -3,13 +3,13 @@
     "config_file" : "parallel_config_multitask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['resnet34', 'resnet18']"
+    "models": "['resnet18', 'resnet50', 'resnet34']"
 
   },
   {
     "config_file" : "parallel_config_multitask_Masked_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['resnet34', 'resnet18']"
+    "models": "['resnet18', 'resnet50', 'resnet34']"
   }
 ]
