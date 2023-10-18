@@ -1,5 +1,5 @@
 import os
-
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,7 +27,16 @@ def plot_test_results(test_results, plot_test_dir):
         plt.savefig(os.path.join(plot_test_dir, "Acc"))
         plt.show()
 
+def plot_bbox_on_image(img, box_tot):
 
+    # Create a figure and axes
+    fig, ax = plt.subplots(1)
+
+    # Display the image
+    ax.imshow(img)
+    rect = patches.Rectangle((box_tot[0], box_tot[1]), box_tot[2], box_tot[3], linewidth=1, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+    plt.show()
 def plot_training_multi(history, plot_training_dir):
     plt.figure(figsize=(8, 6))
     colors = ['r', 'b']
@@ -80,30 +89,31 @@ def plot_regression(history, plot_training_dir):
 
 
 
-def plot_training(history, plot_training_dir):
+def plot_training(history, plot_training_dir, name=""):
     # Training results Loss function
     if 'train_loss' in history.columns and 'val_loss' in history.columns:
         plt.figure(figsize=(8, 6))
-        for c in ['train_loss', 'val_loss']:
-            plt.plot(history[c], label=c)
+        colors = ['r', 'b']
+        for i, c in enumerate(['train_loss', 'val_loss']):
+            plt.plot([ep + 1 for ep in list(history.index)], history.loc[:, c], label=c, color=colors[i])
         plt.legend()
         plt.xlabel('Epoch')
-        plt.ylabel('Average Negative Log Likelihood')
+        plt.ylabel('Average Loss Function')
         plt.title('Training and Validation Losses')
-        plt.savefig(os.path.join(plot_training_dir, "Loss"))
-        plt.show()
+        plt.savefig(os.path.join(plot_training_dir, f"Loss{name}"))
+        plt.close()
     # Training results Accuracy
     if 'train_acc' in history.columns and 'val_acc' in history.columns:
         plt.figure(figsize=(8, 6))
-        for c in ['train_acc', 'val_acc']:
-            plt.plot(100 * history[c], label=c)
+        colors = ['r', 'b']
+        for i,c in enumerate(['train_acc', 'val_acc']):
+            plt.plot([ep + 1 for ep in list(history.index)], 100 * history.loc[:, c], label=c, color=colors[i])
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Average Accuracy')
         plt.title('Training and Validation Accuracy')
-        plt.savefig(os.path.join(plot_training_dir, "Acc"))
-        plt.show()
-
+        plt.savefig(os.path.join(plot_training_dir,  f"Acc{name}"))
+        plt.close()
 
 def plot_morphos_contours(image, image_th, contour, image_gauss):
     fig, ax = plt.subplots(2, 1, figsize=(10, 10))

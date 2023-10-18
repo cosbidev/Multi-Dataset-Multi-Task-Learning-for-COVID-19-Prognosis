@@ -35,11 +35,16 @@ def main():
     # Load configuration file
     with open(args.cfg_file) as file:
         cfg = yaml.load(file, Loader=yaml.FullLoader)
-
+    if not is_debug():
+        with open('configs/common/common_morbidity.yaml') as file_common:
+            cfg_common = yaml.load(file_common, Loader=yaml.FullLoader)
+        cfg.update(cfg_common)
+        del cfg_common
     # Seed everything
     seed_all(cfg['seed'])
 
     # Parameters
+    batch_size = cfg['trainer']['batch_size']
     classes = cfg['data']['classes']
     model_name = args.model_name
     steps = ['train', 'val', 'test']
@@ -56,19 +61,19 @@ def main():
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        Batch = f'_Batch{cfg["data"]["batch_size"] // torch.cuda.device_count()}'
+        Batch = f'_Batch{batch_size // torch.cuda.device_count()}'
     else:
-        Batch = f'_Batch{cfg["data"]["batch_size"]}'
+        Batch = f'_Batch{batch_size}'
     LearningRate = f'_LR{cfg["trainer"]["optimizer"]["lr"]}'
     Masked = '_LungMask' if data_cfg['preprocess']['masked'] else '_Entire'
     bbox_resize = '_LungBbox' if data_cfg['preprocess']['bbox_resize'] else '_Entire' if cfg['data']['modes']['img']['bbox_resize'] else ''
     softmax = '_Softmax' if cfg['model']['softmax'] else ''
-    freezing = '_unfreeze_' if not cfg['model']['freezing'] else ''
+    freezing = '_freezeBB_' if cfg['model']['freezing'] else ''
     warming = f'_warmup_' if cfg['trainer']['warmup_epochs'] != 0 else ''
     loss = f'_loss_{cfg["trainer"]["loss"]}' if cfg['trainer']['loss'].lower() != 'mse' else ''
 
     # Experiment name
-    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + warming + loss + Drop + softmax + CLAHE + Filter + Clip + Masked + bbox_resize + freezing
+    exp_name = cfg['exp_name'] + CV + Batch + LearningRate + warming + loss + Drop + softmax + CLAHE + Filter + Clip + freezing + Masked + bbox_resize
     print(' ----------| Experiment name: ', exp_name)
 
     # Device
@@ -80,13 +85,6 @@ def main():
     cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
     # Files and Directories
-    assert model_name in [
-        "vgg11", "shufflenet_v2_x1_5", "squeezenet1_0", "squeezenet1_1", "mobilenet_v2",
-        "vgg11_bn", "densenet121_CXR",
-        "vgg13", "vgg13_bn", "vgg16", "vgg16_bn", "vgg19", "vgg19_bn",
-        "resnet18", "resnet34", "resnet50", "resnet101", "resnet152",
-        "densenet121", "densenet121_CXR", "densenet169", "densenet161", "densenet201", "googlenet", "shufflenet_v2_x0_5",
-        "shufflenet_v2_x1_0", "resnext50_32x4d", "wide_resnet50_2", "mnasnet0_5", "mnasnet1_0"]
     model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)  # folder to save model
     print(' ----------| Model directory: ', model_dir)
     if not args.checkpointer and os.path.exists(model_dir):
@@ -142,29 +140,27 @@ def main():
         fold_data = {step: pd.read_csv(os.path.join(cfg['data']['fold_dir'], str(fold), '%s.txt' % step), delimiter=" ") for step in steps}
 
         if is_debug():
-            pass
-            fold_data['train'] = fold_data['train']
+
+            fold_data['train'] = fold_data['train'][100:280]
             fold_data['val'] = fold_data['val'][100:280]
             fold_data['test'] = fold_data['test'][100:280]
-        # ------------------- DATA -------------------
-        datasets = {step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg['data']['modes']['img'], step=step) for step in steps}
 
-        # Data loaders
-        data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
-                        'val': torch.utils.data.DataLoader(datasets['val'], batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                        'test': torch.utils.data.DataLoader(datasets['test'], batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-        # Idx to class name
-        idx_to_class = {v: k for k, v in datasets['train'].class_to_idx.items()}
         # ------------------- MODEL -------------------
         model = get_SingleTaskModel(backbone=model_name, cfg=cfg, device=device)
         # allocate model on gpu
+        n_gpus = torch.cuda.device_count()
         if torch.cuda.device_count() > 1:
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
-            model = nn.DataParallel(model, [0, 1])
+            print("Let's use", n_gpus, "GPUs!")
+            model = nn.DataParallel(model, list(range(n_gpus)))
+        # ------------------- DATA -------------------
+        datasets = {step: DatasetImgAFC(data=fold_data[step], classes=classes, cfg=cfg, step=step) for step in steps}
 
-        # Load pretrained model if exists
-        if cfg['model']['pretrained']:
-            model.load_state_dict(torch.load(os.path.join(cfg['model']['pretrained'], str(fold), "model.pt"), map_location=device))
+        # Data loaders
+        data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
+                        'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+                        'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+        # Idx to class name
+        idx_to_class = {v: k for k, v in datasets['train'].m_class_to_idx.items()}
 
         # Checkpointer
         model_trained = False
@@ -178,6 +174,8 @@ def main():
                     model_dict = model_loaded.module.state_dict()
                 elif isinstance(model_loaded, torch.nn.Module):
                     model_dict = model_loaded.state_dict()
+                elif isinstance(model_loaded, dict):
+                    model_dict = model_loaded
                 if isinstance(model, torch.nn.DataParallel):
                     model.module.load_state_dict(model_dict)
                 elif isinstance(model, torch.nn.Module):
@@ -189,11 +187,9 @@ def main():
         # Loss function
         if cfg['trainer']['loss'].lower() == 'mse':
             criterion = nn.MSELoss().to(device)
-        elif cfg['trainer']['loss'].lower() == 'bce' and not softmax:
-            criterion = nn.BCEWithLogitsLoss().to(device)
         elif cfg['trainer']['loss'].lower() == 'bce':
             criterion = nn.BCELoss().to(device)
-
+        # ------------------- TRAINING -------------------
         if not model_trained:
             # Optimizer
             optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])

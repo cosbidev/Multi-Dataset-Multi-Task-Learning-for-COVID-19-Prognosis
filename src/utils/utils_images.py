@@ -8,7 +8,6 @@ import torch
 from PIL import Image
 from skimage import morphology, color, transform, filters
 from skimage.exposure import equalize_adapthist
-
 from .utils_path import files_in_folder
 
 
@@ -199,7 +198,7 @@ def get_mask(img, mask): # todo: img[~mask]
     return img * boolean_mask
 
 
-def get_box(img, box_, masked=False, border_add=10, **kwargs):
+def get_box(img, box_, masked=False, border_add=5, **kwargs):
     """
     Returns the image inside the bounding box, if the parameter masked is true the image is padded with zeros; otherwise
     it's needed to pad the image with real values from the image. The padding is done in order to have a squared image
@@ -230,7 +229,7 @@ def get_box(img, box_, masked=False, border_add=10, **kwargs):
         if box[1] + box[3] + pixel_add_h > img.shape[0]:
             pixel_add_h = pixel_add_h - abs(box[1] + box[3] + pixel_add_h - img.shape[0])
 
-        box = [box[0] - pixel_add_w, box[1] - pixel_add_h, box[2] + pixel_add_w, box[3] + pixel_add_h]
+        box = [box[0] - pixel_add_w, box[1] - pixel_add_h, box[2] + (2 * pixel_add_w), box[3] + ( 2 * pixel_add_h)]
 
     l_w = box[2]
     l_h = box[3]
@@ -306,6 +305,9 @@ def normalize(img, min_val=None, max_val=None):
     if max_val == min_val:
         print('Warning: max and min values are equal')
         return img
+    norm_mean, norm_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+
+
     img = (img - min_val) / (max_val - min_val)
     # img -= img.mean()
     # img /= img.std()

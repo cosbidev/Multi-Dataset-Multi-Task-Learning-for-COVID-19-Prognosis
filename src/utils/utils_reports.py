@@ -10,10 +10,12 @@ def compute_report_metrics(final_report_folds,
                            save_temp=True,
                            classes_report=None,
                            classes=None,
+                           optional_Dataset=''
                            ):
     # FINAL RESULTS:
     # 1) Save all the prediction for each image in the val set
-    results_by_patient.to_excel(os.path.join(report_path, f'[{str(fold)}]_val_results_by_image_{model_name}.xlsx'), index=False)
+    optional_Dataset += '_' if optional_Dataset != '' else ''
+    results_by_patient.to_excel(os.path.join(report_path, f'[{str(fold)}]_results_by_image_{model_name}{optional_Dataset}.xlsx'), index=False)
 
     # 2) Add metrics computed by classes and by fold in the final_report_folds
     final_report_folds.loc['fold_' + str(fold), :] = metrics_report
@@ -28,5 +30,5 @@ def compute_report_metrics(final_report_folds,
 
     # 4) save temp file
     if save_temp:
-        final_report_folds.to_excel(os.path.join(report_path, f'[{str(fold)}]_val_temp_results_{model_name}.xlsx'))
+        final_report_folds.to_excel(os.path.join(report_path, f'[{str(fold)}]_results_prediction_{model_name}{optional_Dataset}.xlsx'))
     return final_report_folds

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
-#SBATCH -N 1 --gpus-per-node=A100:2
-#SBATCH -t 3-10:00:00
+#SBATCH -N 1 --gpus-per-node=A40:1
+#SBATCH -t 0-18:00:00
 # Output files
+
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out
 # Mail me
@@ -17,7 +18,6 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 source bin/activate
 
 
-
 # Load modules
 #module purge
 #module load CUDA/11.3.1
@@ -30,11 +30,9 @@ module load  OpenCV/4.6.0-foss-2022a-CUDA-11.7.0-contrib
 # Executes the code
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID || exit
 
-
 config=$config_dir
 model=$model_name
 id_exp=$id_exp
-
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
 python src/models/train_MultiObjectiveModel.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}

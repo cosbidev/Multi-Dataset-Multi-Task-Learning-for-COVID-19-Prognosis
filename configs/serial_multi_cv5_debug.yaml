@@ -11,7 +11,7 @@ data:
   model_dir: models/Multi/DBG # folder to save trained model
   report_dir: reports/Multi/DBG # folder to save results
 
-  batch_size: 64
+
   modes:
     morbidity:
       img:
@@ -46,7 +46,7 @@ data:
     bbox_resize: True
 
 model:
-  freezing: False
+  freezing: True
   model_name: multi
   task: multitask
   head: serial
@@ -60,7 +60,7 @@ model:
 trainer:
   loss_1: mse # loss function
   loss_2: mse # loss function
-  warmup_epochs: 50 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
+  warmup_epochs: 1 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
   optimizer:
     lr: 0.001 # initial learning rate
     weight_decay: 0.00001 # weight decay
@@ -70,4 +70,6 @@ trainer:
     min_lr: 1e-7
     factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 100 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 1
+  max_epochs: 2
+  batch_size: 64
+  normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)

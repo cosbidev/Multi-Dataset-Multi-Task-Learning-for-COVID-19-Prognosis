@@ -17,7 +17,6 @@ data:
     - D
     - E
     - F
-  batch_size: 128
   modes:
     img:
       loader_name: custom_preprocessing

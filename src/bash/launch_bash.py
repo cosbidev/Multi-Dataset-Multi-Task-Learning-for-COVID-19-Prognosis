@@ -33,22 +33,36 @@ parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
                     choices=['morbidity', 'severity', 'multi'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
-[   "densenet121_CXR",
-    "densenet121",
-    "mobilenet_v2",
-    "resnet18",
-    "resnet34",
-    "resnet50",
-    "resnet101",
-    "resnext50_32x4d",
-    "shufflenet_v2_x0_5",
-    "shufflenet_v2_x1_0",
-    "squeezenet1_0",
-    "squeezenet1_1",
-    "wide_resnet50_2",
-])
+["densenet121_CXR",
+ "densenet121",
+ "densenet201",
+ "densenet161",
+ "densenet169",
+ "googlenet",
+ "mobilenet_v2",
+ "squeezenet1_0",
+ "squeezenet1_1",
+ "vgg11",
+ "vgg11_bn",
+ "vgg16",
+ "vgg16_bn",
+ "vgg13_bn",
+ "vgg13",
+ "mobilenet_v2",
+ "resnet18",
+ "resnet34",
+ "resnet50",
+ "resnet50_ChestX-ray14",
+ "resnet50_ChexPert",
+ "resnet50_ImageNet_ChestX-ray14",
+ "resnet50_ImageNet_ChexPert",
+ "resnet101",
+ "resnext50_32x4d",
+ "shufflenet_v2_x0_5",
+ "shufflenet_v2_x1_0",
+ "wide_resnet50_2",
 
-
+ ])
 
 parser.add_argument("-id", "--exp_id", help="not freezed layers")
 parser.add_argument("-c", "--checkpoint", help="Number of folder", action='store_true')
@@ -56,11 +70,11 @@ args = parser.parse_args()
 
 config_selector = {
     'morbidity':
-    {
-        '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
-        'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
-        'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
-    },
+        {
+            '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
+            'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
+            'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
+        },
     'severity':
         {
             '5': '../../configs/bash_experiments/experiment_setups_severity_5.json',
@@ -78,7 +92,6 @@ config_selector = {
         }
 }
 
-
 if __name__ == "__main__":
 
     # Load the experiment list
@@ -91,20 +104,41 @@ if __name__ == "__main__":
     print(experiment_list)
     processes = []  # List to store the subprocess instances
 
-
     for i, exp_config in enumerate(experiment_list):
         # pick models
         args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
+        if args.modality_kind == 'multi':
+            args.model_names = ["densenet121_CXR",
+                                "densenet121",
+                                "densenet201",
+                                "densenet161",
+                                "densenet169",
+                                "googlenet",
+                                "mobilenet_v2",
+                                "mobilenet_v2",
+                                "resnet18",
+                                "resnet34",
+                                "resnet50",
+                                "resnet50_ChestX-ray14",
+                                "resnet50_ChexPert",
+                                "resnet50_ImageNet_ChestX-ray14",
+                                "resnet50_ImageNet_ChexPert",
+                                "resnet101",
+                                "resnext50_32x4d",
+                                "shufflenet_v2_x0_5",
+                                "shufflenet_v2_x1_0",
+                                "wide_resnet50_2",
+                                ]
+
+
 
         print('exp ', exp_config, 'models', args.model_names)
 
-        
         for model in args.model_names:
-
 
             # Imposta la variabile d'ambiente con il dizionario
             os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
-                                                                  exp_config['config_file'])
+                                                                 exp_config['config_file'])
             if args.checkpoint:
                 os.environ["checkpoint"] = "-c"
 
@@ -112,13 +146,10 @@ if __name__ == "__main__":
             os.environ["id_exp"] = str(args.exp_id)
             print("modality", args.modality_kind,
                   "model", model, "\n",
-                  "id", args.exp_id,"\n",
-                  "fold", exp_config['fold'],"\n",
-                  "config", exp_config['config_file'],"\n",
-                  "checkpoint", args.checkpoint, "\n",)
+                  "id", args.exp_id, "\n",
+                  "fold", exp_config['fold'], "\n",
+                  "config", exp_config['config_file'], "\n",
+                  "checkpoint", args.checkpoint, "\n")
             bash_file = {'severity': 'train_severity.sh', 'morbidity': 'train_morbidity.sh', 'multi': 'train_multi.sh'}
             launch_slurm_job(bash_file[args.modality_kind],
                              os.environ)
-
-
-

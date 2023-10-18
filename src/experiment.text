@@ -3,3 +3,12 @@
 % sbatch exp_morbidity_parallel.sh -c L -i baseline -h a
 
 
+python src/postprocessing/Create_Final_Report.py -m morbidity -exp MIMA_oldH -s=''
+
+
+du -h --max-dep=1 /mimer/NOBACKUP/groups/snic2022-5-277
+
+scancel 1463623
+scancel 1463624
+scancel 1463625
+scancel 1463626

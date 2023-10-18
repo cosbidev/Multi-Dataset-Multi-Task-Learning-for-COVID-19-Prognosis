@@ -42,7 +42,7 @@ model:
 
 trainer:
   loss: mse
-  warmup_epochs: 50 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
+  warmup_epochs: 1 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
   optimizer:
     lr: 0.001 # initial learning rate
     weight_decay: 0.00001 # weight decay
@@ -52,4 +52,6 @@ trainer:
     min_lr: 1e-6
     factor: 0.7 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
   early_stopping: 50 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 1
+  max_epochs: 2
+  batch_size: 64
+  normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)

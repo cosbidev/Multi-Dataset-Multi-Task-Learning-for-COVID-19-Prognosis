@@ -17,7 +17,6 @@ data:
     - D
     - E
     - F
-  batch_size: 128
   modes:
     img:
       loader_name: custom_preprocessing
@@ -38,7 +37,7 @@ model:
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.25
   regression_type: area
-  freezing: False
+  freezing: True
 
 trainer:
   loss: mse
