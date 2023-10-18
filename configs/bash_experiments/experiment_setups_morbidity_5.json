@@ -3,13 +3,7 @@
     "config_file" : "afc_config_singletask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "all"
-
-  },{
-    "config_file" : "afc_config_singletask_cv5_CLAHE_filtered_clipped.yaml",
-    "name" : "cv5",
-    "fold" : 5,
-    "models": "all"
+      "models": "all"
 
   },
   {
@@ -17,16 +11,5 @@
     "name" : "cv5",
     "fold" : 5,
     "models": "all"
-
-  },
-  {
-    "config_file" : "afc_config_singletask_Masked_cv5_CLAHE_filtered_clipped.yaml",
-    "name" : "cv5",
-    "fold" : 5,
-    "models": "all"
   }
-
-
-
-
 ]

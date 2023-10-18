@@ -1,0 +1,13 @@
+[
+  {
+    "config_file" : "parallel_config_multitask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "all"},
+  {
+    "config_file" : "parallel_config_multitask_Masked_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models":  "all"
+  }
+]

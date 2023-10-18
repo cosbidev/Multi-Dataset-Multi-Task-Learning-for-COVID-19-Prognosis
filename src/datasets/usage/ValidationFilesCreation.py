@@ -13,7 +13,7 @@ from itertools import chain
 import argparse
 from src import rotate, mkdir, chunks
 
-
+"""
 sys.argv.extend(
         [
             '-o', 'data/processed',
@@ -32,7 +32,7 @@ sys.argv.extend(
             '-m', 'data/AIforCOVID'
         ]
     )
-"""
+
 
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
@@ -58,6 +58,7 @@ def ValidationCreation():
     dataset_name = args.dataset_name
     dest_dir = os.path.join(args.output_dir, dataset_name)
     cv = args.fold
+
 
 
     db = pd.read_excel(data_file, header=0, index_col="img")
@@ -273,6 +274,7 @@ def ValidationCreation():
 
         # Shift folds by one
         folds = rotate(folds, 1)
+
 
 
 if __name__ == '__main__':

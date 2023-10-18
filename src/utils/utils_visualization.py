@@ -1,38 +1,119 @@
 import os
-
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 
-
-
-def plot_training(history, plot_training_dir):
-    # Training results Loss function
-    if 'train_loss' in history.columns and 'val_loss' in history.columns:
+def plot_test_results(test_results, plot_test_dir):
+    # Test results Loss function
+    if 'test_loss' in test_results.columns:
         plt.figure(figsize=(8, 6))
-        for c in ['train_loss', 'val_loss']:
-            plt.plot(history[c], label=c)
+        plt.plot(test_results['test_loss'], label='test_loss')
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Average Negative Log Likelihood')
-        plt.title('Training and Validation Losses')
-        plt.savefig(os.path.join(plot_training_dir, "Loss"))
+        plt.title('Test Loss')
+        plt.savefig(os.path.join(plot_test_dir, "Loss"))
         plt.show()
+    # Test results Accuracy
+    if 'test_acc' in test_results.columns:
+        plt.figure(figsize=(8, 6))
+        plt.plot(100 * test_results['test_acc'], label='test_acc')
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Average Accuracy')
+        plt.title('Test Accuracy')
+        plt.savefig(os.path.join(plot_test_dir, "Acc"))
+        plt.show()
+
+def plot_bbox_on_image(img, box_tot):
+
+    # Create a figure and axes
+    fig, ax = plt.subplots(1)
+
+    # Display the image
+    ax.imshow(img)
+    rect = patches.Rectangle((box_tot[0], box_tot[1]), box_tot[2], box_tot[3], linewidth=1, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+    plt.show()
+def plot_training_multi(history, plot_training_dir):
+    plt.figure(figsize=(8, 6))
+    colors = ['r', 'b']
+    for i, c in enumerate(['train_loss', 'val_loss']):
+        plt.plot(history[c], label=c, color=colors[i])
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE (M + S)')
+    plt.title('Training and Validation Losses: Morbidity + Severity')
+    plt.savefig(os.path.join(plot_training_dir, "Loss"))
+    plt.close()
+    plt.figure(figsize=(8, 6))
+    for i, c in enumerate(['train_acc', 'val_acc']):
+        plt.plot(history[c], label=c, color=colors[i])
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title('Train and Validation Accuracy : Morbidity')
+    plt.savefig(os.path.join(plot_training_dir, "ACC"))
+    plt.close()
+
+
+def plot_regression(history, plot_training_dir):
+    # Training results Loss function
+    colors = ['r', 'b']
+    plt.figure(figsize=(8, 6))
+    for i, c in enumerate(['train_loss', 'val_loss']):
+        plt.plot(history[c], label=c, color=colors[i])
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE error on Global Score')
+    plt.title('Training and Validation Losses')
+    plt.savefig(os.path.join(plot_training_dir, "Loss"))
+    plt.close()
+
+    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
+    list_axis = axs.tolist()
+    name_of_accuracies = ['G', 'LL', 'RL']
+    for name_acc, ax in zip(name_of_accuracies, list_axis):
+        for i, c in enumerate(['train_acc_' + name_acc, 'val_acc_' + name_acc]):
+            ax.plot(history[c], label=c, color=colors[i])
+
+            ax.set_xlabel('Epoch', fontsize=15)
+            ax.set_ylabel('ACC on {} score'.format(name_acc), fontsize=15)  # 'Accuracy'')
+            ax.legend(fontsize=15)
+
+    plt.suptitle('Train and Validation Accuracy : Severity', fontsize=30)
+    plt.savefig(os.path.join(plot_training_dir, "ACC_zones_severity.png"))
+    plt.close()
+
+
+
+def plot_training(history, plot_training_dir, name=""):
+    # Training results Loss function
+    if 'train_loss' in history.columns and 'val_loss' in history.columns:
+        plt.figure(figsize=(8, 6))
+        colors = ['r', 'b']
+        for i, c in enumerate(['train_loss', 'val_loss']):
+            plt.plot([ep + 1 for ep in list(history.index)], history.loc[:, c], label=c, color=colors[i])
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Average Loss Function')
+        plt.title('Training and Validation Losses')
+        plt.savefig(os.path.join(plot_training_dir, f"Loss{name}"))
+        plt.close()
     # Training results Accuracy
     if 'train_acc' in history.columns and 'val_acc' in history.columns:
         plt.figure(figsize=(8, 6))
-        for c in ['train_acc', 'val_acc']:
-            plt.plot(100 * history[c], label=c)
+        colors = ['r', 'b']
+        for i,c in enumerate(['train_acc', 'val_acc']):
+            plt.plot([ep + 1 for ep in list(history.index)], 100 * history.loc[:, c], label=c, color=colors[i])
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Average Accuracy')
         plt.title('Training and Validation Accuracy')
-        plt.savefig(os.path.join(plot_training_dir, "Acc"))
-        plt.show()
-
-
-
+        plt.savefig(os.path.join(plot_training_dir,  f"Acc{name}"))
+        plt.close()
 
 def plot_morphos_contours(image, image_th, contour, image_gauss):
     fig, ax = plt.subplots(2, 1, figsize=(10, 10))
@@ -45,11 +126,11 @@ def plot_morphos_contours(image, image_th, contour, image_gauss):
 
 def plotPerColumnDistribution(df, nGraphShown, nGraphPerRow):
     nunique = df.nunique()
-    df = df[[col for col in df if nunique[col] > 1 and nunique[col] < 50]] # For displaying purposes, pick columns that have between 1 and 50 unique values
+    df = df[[col for col in df if nunique[col] > 1 and nunique[col] < 50]]  # For displaying purposes, pick columns that have between 1 and 50 unique values
     nRow, nCol = df.shape
     columnNames = list(df)
     nGraphRow = (nCol + nGraphPerRow - 1) / nGraphPerRow
-    plt.figure(num = None, figsize = (6 * nGraphPerRow, 8 * nGraphRow), dpi = 80, facecolor = 'w', edgecolor = 'k')
+    plt.figure(num=None, figsize=(6 * nGraphPerRow, 8 * nGraphRow), dpi=80, facecolor='w', edgecolor='k')
     for i in range(min(nCol, nGraphShown)):
         plt.subplot(nGraphRow, nGraphPerRow, i + 1)
         columnDf = df.iloc[:, i]
@@ -59,40 +140,44 @@ def plotPerColumnDistribution(df, nGraphShown, nGraphPerRow):
         else:
             columnDf.hist()
         plt.ylabel('counts')
-        plt.xticks(rotation = 90)
+        plt.xticks(rotation=90)
         plt.title(f'{columnNames[i]} (column {i})')
-    plt.tight_layout(pad = 1.0, w_pad = 1.0, h_pad = 1.0)
+    plt.tight_layout(pad=1.0, w_pad=1.0, h_pad=1.0)
     plt.show()
+
+
 # Correlation matrix
 def plotCorrelationMatrix(df, graphWidth):
     filename = df.dataframeName
-    df = df.dropna('columns') # drop columns with NaN
-    df = df[[col for col in df if df[col].nunique() > 1]] # keep columns where there are more than 1 unique values
+    df = df.dropna('columns')  # drop columns with NaN
+    df = df[[col for col in df if df[col].nunique() > 1]]  # keep columns where there are more than 1 unique values
     if df.shape[1] < 2:
         print(f'No correlation plots shown: The number of non-NaN or constant columns ({df.shape[1]}) is less than 2')
         return
     corr = df.corr()
     plt.figure(num=None, figsize=(graphWidth, graphWidth), dpi=80, facecolor='w', edgecolor='k')
-    corrMat = plt.matshow(corr, fignum = 1)
+    corrMat = plt.matshow(corr, fignum=1)
     plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
     plt.yticks(range(len(corr.columns)), corr.columns)
     plt.gca().xaxis.tick_bottom()
     plt.colorbar(corrMat)
     plt.title(f'Correlation Matrix for {filename}', fontsize=15)
     plt.show()
+
+
 # Scatter and density plots
 def plotScatterMatrix(df, plotSize, textSize):
-    df = df.select_dtypes(include =[np.number]) # keep only numerical columns
+    df = df.select_dtypes(include=[np.number])  # keep only numerical columns
     # Remove rows and columns that would lead to df being singular
     df = df.dropna('columns')
-    df = df[[col for col in df if df[col].nunique() > 1]] # keep columns where there are more than 1 unique values
+    df = df[[col for col in df if df[col].nunique() > 1]]  # keep columns where there are more than 1 unique values
     columnNames = list(df)
-    if len(columnNames) > 10: # reduce the number of columns for matrix inversion of kernel density plots
+    if len(columnNames) > 10:  # reduce the number of columns for matrix inversion of kernel density plots
         columnNames = columnNames[:10]
     df = df[columnNames]
     ax = pd.plotting.scatter_matrix(df, alpha=0.75, figsize=[plotSize, plotSize], diagonal='kde')
     corrs = df.corr().values
-    for i, j in zip(*plt.np.triu_indices_from(ax, k = 1)):
+    for i, j in zip(*plt.np.triu_indices_from(ax, k=1)):
         ax[i, j].annotate('Corr. coef = %.3f' % corrs[i, j], (0.8, 0.2), xycoords='axes fraction', ha='center', va='center', size=textSize)
     plt.suptitle('Scatter and Density Plot')
     plt.show()

@@ -25,77 +25,131 @@ def extract_job_id(sbatch_output):
     return job_id
 
 
-
-
-
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
-parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,choices=['5', 'L', '10'], default= '5')
-
-config_selector = {'5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
-                    'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
-                    '10': '../../configs/bash_experiments/experiment_setups_morbidity_10.json'
-                    }
-
+parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,
+                    default='5')
+parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
+                    choices=['morbidity', 'severity', 'multi'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
-    [
+["densenet121_CXR",
+ "densenet121",
+ "densenet201",
+ "densenet161",
+ "densenet169",
+ "googlenet",
+ "mobilenet_v2",
+ "squeezenet1_0",
+ "squeezenet1_1",
+ "vgg11",
+ "vgg11_bn",
+ "vgg16",
+ "vgg16_bn",
+ "vgg13_bn",
+ "vgg13",
+ "mobilenet_v2",
+ "resnet18",
+ "resnet34",
+ "resnet50",
+ "resnet50_ChestX-ray14",
+ "resnet50_ChexPert",
+ "resnet50_ImageNet_ChestX-ray14",
+ "resnet50_ImageNet_ChexPert",
+ "resnet101",
+ "resnext50_32x4d",
+ "shufflenet_v2_x0_5",
+ "shufflenet_v2_x1_0",
+ "wide_resnet50_2",
 
-     'vgg11',
-     'vgg11_bn',
-     'vgg13',
-     'vgg13_bn',
-     'vgg16',
-     'vgg16_bn',
-     'vgg19',
-     'vgg19_bn'
- 
-	])
+ ])
 
-"""     'resnet18'
-     'resnet34',
-     'resnet50',
-     'resnet101',
-     'resnet152',
-     'densenet121',
-     'densenet169',
-     'densenet161',
-     'densenet201',
-     'shufflenet_v2_x0_5',
-     'shufflenet_v2_x1_0',
-     'mobilenet_v2'
-     'resnext50_32x4d',
-     'wide_resnet50_2',
-     'mnasnet0_5',
-     'mnasnet1_0',
-     'resnext50_32x4d',
-     'wide_resnet50_2',
-     'mnasnet0_5',
-     'mnasnet1_0',
-    'alexnet' 
-""" 
-parser.add_argument("-id","--exp_id", help="not freezed layers", default=1, type=int)
+parser.add_argument("-id", "--exp_id", help="not freezed layers")
+parser.add_argument("-c", "--checkpoint", help="Number of folder", action='store_true')
 args = parser.parse_args()
 
-
-
-
-
+config_selector = {
+    'morbidity':
+        {
+            '5': '../../configs/bash_experiments/experiment_setups_morbidity_5.json',
+            'L': '../../configs/bash_experiments/experiment_setups_morbidity_loCo.json',
+            'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
+        },
+    'severity':
+        {
+            '5': '../../configs/bash_experiments/experiment_setups_severity_5.json',
+            'L': '../../configs/bash_experiments/experiment_setups_severity_loCo.json',
+            'E': '../../configs/bash_experiments/experiment_setups_morbidity_E.json'
+        },
+    'multi':
+        {
+            'P5': '../../configs/bash_experiments/experiment_setups_multitask_parallel_5.json',
+            'PL6': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_6.json',
+            'PL18': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_18.json',
+            'S5': '../../configs/bash_experiments/experiment_setups_multitask_serial_5.json',
+            'SL6': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_6.json',
+            'SL18': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_18.json',
+        }
+}
 
 if __name__ == "__main__":
 
     # Load the experiment list
-    file_config = config_selector[args.experiment_config]
+    file_config = config_selector[args.modality_kind][args.experiment_config]
+    print(file_config)
     with open(file_config, 'r') as data_file:
         json_data = data_file.read()
 
     experiment_list = json.loads(json_data)
+    print(experiment_list)
     processes = []  # List to store the subprocess instances
-    for model in args.model_names:
 
-        for i, exp_config in enumerate(experiment_list):
+    for i, exp_config in enumerate(experiment_list):
+        # pick models
+        args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
+        if args.modality_kind == 'multi':
+            args.model_names = ["densenet121_CXR",
+                                "densenet121",
+                                "densenet201",
+                                "densenet161",
+                                "densenet169",
+                                "googlenet",
+                                "mobilenet_v2",
+                                "mobilenet_v2",
+                                "resnet18",
+                                "resnet34",
+                                "resnet50",
+                                "resnet50_ChestX-ray14",
+                                "resnet50_ChexPert",
+                                "resnet50_ImageNet_ChestX-ray14",
+                                "resnet50_ImageNet_ChexPert",
+                                "resnet101",
+                                "resnext50_32x4d",
+                                "shufflenet_v2_x0_5",
+                                "shufflenet_v2_x1_0",
+                                "wide_resnet50_2",
+                                ]
+
+
+
+        print('exp ', exp_config, 'models', args.model_names)
+
+        for model in args.model_names:
+
             # Imposta la variabile d'ambiente con il dizionario
-            os.environ["config_dir"] = "configs/{}/morbidity/{}".format(str(exp_config['fold']), exp_config['config_file'])
+            os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
+                                                                 exp_config['config_file'])
+            if args.checkpoint:
+                os.environ["checkpoint"] = "-c"
+
             os.environ["model_name"] = str(model)
             os.environ["id_exp"] = str(args.exp_id)
-            launch_slurm_job('train_morbidity.sh', os.environ)
+            print("modality", args.modality_kind,
+                  "model", model, "\n",
+                  "id", args.exp_id, "\n",
+                  "fold", exp_config['fold'], "\n",
+                  "config", exp_config['config_file'], "\n",
+                  "checkpoint", args.checkpoint, "\n")
+            bash_file = {'severity': 'train_severity.sh', 'morbidity': 'train_morbidity.sh', 'multi': 'train_multi.sh'}
+            launch_slurm_job(bash_file[args.modality_kind],
+                             os.environ)

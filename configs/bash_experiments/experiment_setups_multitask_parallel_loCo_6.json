@@ -1,0 +1,15 @@
+[
+  {
+    "config_file" : "parallel_config_multitask_loCo6.yaml",
+    "name" : "loCo",
+    "fold" : "loCo",
+    "models": "['resnet18', 'resnet50', 'resnet34']"
+
+  },
+  {
+    "config_file" : "parallel_config_multitask_Masked_loCo6.yaml",
+    "name" : "loCo",
+    "fold" : "loCo",
+    "models": "['resnet18', 'resnet50', 'resnet34']"
+  }
+]

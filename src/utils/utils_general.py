@@ -1,19 +1,76 @@
 import os
 import random
 import shutil
+import subprocess
+import sys
+from typing import Any
 
 import click
 import numpy as np
 import torch
 
 
+class Logger(object):
+    """Redirect stderr to stdout, optionally print stdout to a file, and optionally force flushing on both stdout and the file."""
+
+    def __init__(self, file_name: str = None, file_mode: str = "w", should_flush: bool = True):
+        self.file = None
+
+        if file_name is not None:
+            self.file = open(file_name, file_mode)
+
+        self.should_flush = should_flush
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
+
+        sys.stdout = self
+        sys.stderr = self
+
+    def __enter__(self) -> "Logger":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
+
+    def write(self, text: str) -> None:
+        """Write text to stdout (and a file) and optionally flush."""
+        if len(text) == 0:  # workaround for a bug in VSCode debugger: sys.stdout.write(''); sys.stdout.flush() => crash
+            return
+
+        if self.file is not None:
+            self.file.write(text)
+
+        self.stdout.write(text)
+
+        if self.should_flush:
+            self.flush()
+
+    def flush(self) -> None:
+        """Flush written text to both stdout and a file, if open."""
+        if self.file is not None:
+            self.file.flush()
+
+        self.stdout.flush()
+
+    def close(self) -> None:
+        """Flush, close possible files, and remove stdout/stderr mirroring."""
+        self.flush()
+
+        # if using multiple loggers, prevent closing in wrong order
+        if sys.stdout is self:
+            sys.stdout = self.stdout
+        if sys.stderr is self:
+            sys.stderr = self.stderr
+
+        if self.file is not None:
+            self.file.close()
 
 
 def do_nothing(*args, **kwargs):
     return args, kwargs
 
-def print_CUDA_info():
 
+def print_CUDA_info():
     print("\n")
     print("".center(100, '|'))
     print(" CUDA GPUs REPORT ".center(100, '|'))
@@ -39,6 +96,7 @@ def print_CUDA_info():
 class ConvertStrToList(click.Option):
     """Convert the list inside a yaml configuration file into a list
     """
+
     def type_cast_value(self, ctx, value):
         try:
             value = str(value)
@@ -60,19 +118,6 @@ def mkdirs(paths: list):
     else:
         mkdir(paths)
 
-
-def is_debug():
-    import sys
-    gettrace = getattr(sys, 'gettrace', None)
-
-    if gettrace is None:
-        return False
-    else:
-        v = gettrace()
-        if v is None:
-            return False
-        else:
-            return True
 
 def mkdir(path: str):
     """create a single empty directory if it didn't exist
@@ -99,16 +144,58 @@ def seed_all(seed=None):  # for deterministic behaviour
         seed = 42
     print("Using Seed : ", seed)
 
-
     # This part is necessary to have reproducible behavior. It affects the CuDNN algorithm.
     os.environ['PYTHONHASHSEED'] = str(seed)
     torch.cuda.empty_cache()
-    torch.manual_seed(seed)   # Set torch pseudo-random generator at a fixed value
+    torch.manual_seed(seed)  # Set torch pseudo-random generator at a fixed value
     torch.cuda.manual_seed_all(seed)
     torch.cuda.manual_seed(seed)
-    np.random.seed(seed)   # Set numpy pseudo-random generator at a fixed value
-    random.seed(seed)   # Set python built-in pseudo-random generator at a fixed value
+    np.random.seed(seed)  # Set numpy pseudo-random generator at a fixed value
+    random.seed(seed)  # Set python built-in pseudo-random generator at a fixed value
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
     return seed
+
+
+def is_debug():
+    import sys
+
+    gettrace = getattr(sys, 'gettrace', None)
+
+    if gettrace is None:
+        return False
+    else:
+        v = gettrace()
+        if v is None:
+            return False
+        else:
+            return True
+
+
+def debugging_only():
+    """ This function is called only if in the DEBUG modality of Pycharm """
+
+    print("".center(100, '°'))
+    print(" DEBUG MODALITY ".center(100, '°'))
+    print("".center(100, '°'))
+
+
+def running():
+    print("".center(100, '*'))
+    print(" RUNNING CODE ".center(100, '*'))
+    print("".center(100, '*'))
+
+
+def runcmd(cmd, verbose=False, *args, **kwargs):
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        shell=True
+    )
+    std_out, std_err = process.communicate()
+    if verbose:
+        print(std_out.strip(), std_err)
+    pass

@@ -1,0 +1,43 @@
+seed: 0
+exp_name: serial_multitask
+kind: serial
+device:
+  cuda_device: cuda:0
+  gpu_num_workers: 6
+
+data:
+  cv: 5
+  model_dir: models/Multi/5 # folder to save trained model
+  report_dir: reports/Multi/5 # folder to save results
+  modes:
+    morbidity:
+      img:
+        loader_name: custom_preprocessing
+        img_dir: data/AIforCOVID # path for the dicom directory
+        box_file: data/AIforCOVID/processed/box_data_AXF123.xlsx  # if equal to None do not select the bounding box
+        mask_dir: data/AIforCOVID/processed/masks  # if equal to None do not select lung
+        fold_dir: data/processed/AFC/5 # folder where upload the CV splits at patient level
+      classes: # name of classes
+        - MILD
+        - SEVERE
+    severity:
+      img:
+        loader_name: custom_preprocessing
+        img_dir: data/BRIXIA # path for the dicom directory
+        box_file: data/BRIXIA/processed/box_data_BX.xlsx  # if equal to None do not select the bounding box
+        mask_dir: data/BRIXIA/processed/masks  # if equal to None do not select lung
+        fold_dir: data/processed/BX/5 # folder where upload the CV splits at patient level
+      classes: # name of classes
+        - A
+        - B
+        - C
+        - D
+        - E
+        - F
+  img_dim: 128 # resize shape (square)
+  preprocess:
+    clahe: False
+    filter: False
+    clip: False
+    masked: True
+    bbox_resize: True

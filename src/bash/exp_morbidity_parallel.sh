@@ -13,10 +13,12 @@
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/covid-env || exit
 source bin/activate
 
-# Load modules
+
 module purge
-module load CUDA/11.3.1
-module load torchvision/0.12.0-foss-2021a-PyTorch-1.11.0-CUDA-11.3.1
+module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
+module load scikit-image/0.19.3-foss-2022a
+module load scikit-learn/1.1.2-foss-2022a
+module load  OpenCV/4.6.0-foss-2022a-CUDA-11.7.0-contrib
 # Executes the code
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/src/bash/ || exit
 
@@ -24,16 +26,18 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 
 #!/usr/bin/env bashc
 
-while getopts c:i: flag
+while getopts c:i:h: flag
 do
     # shellcheck disable=SC2220
     case "${flag}" in
         c) config_mode=${OPTARG};;
         i) id_exp=${OPTARG};;
+        h) checkpoint='-c';;
     esac
 done
 echo "config_mode: $config_mode";
 echo "id_exp: $id_exp";
+echo "checkpoint: $checkpoint";
 
 
 
@@ -42,6 +46,6 @@ echo "id_exp: $id_exp";
 
 #!/usr/bin/bash
 # RUN YOUR PROGRAM
-python launch_bash.py -e="$config_mode" -id="$id_exp"
+python launch_bash.py -e="$config_mode" -id="$id_exp" -k morbidity $checkpoint
 # Deactivate venv
 deactivate

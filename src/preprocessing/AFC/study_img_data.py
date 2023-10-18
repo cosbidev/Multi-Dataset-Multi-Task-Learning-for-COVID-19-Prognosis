@@ -6,15 +6,15 @@ from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import src.utils_data
+from src.utils import utils_data as util_data
 
 
 # Dirs and Files
-data_dir = "../data/AIforCOVID"
+data_dir = "data/AIforCOVID"
 img_dir = os.path.join(data_dir, "imgs")
 mask_dir = os.path.join(data_dir, "masks")
 clinical_data_path = os.path.join(data_dir, "AIforCOVID.xlsx")
-bounding_box_file = os.path.join("./data/processed", "box_data.xlsx")
+bounding_box_file = os.path.join(data_dir, 'processed', "box_data.xlsx")
 
 # Load clinical data
 clinical_data = pd.read_excel(clinical_data_path, index_col="ImageFile")

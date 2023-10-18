@@ -1,0 +1,27 @@
+model:
+  freezing: True
+  model_name: multi
+  task: multitask
+  head: H1 # head of the model (H1, H2, H3)
+  pretrained: ["BINA", "BINA"] # if this parameter is None, the model is trained from scratch
+  dropout_rate: 0.50 # dropout rate
+  regression_type: area
+  softmax: True # if True, the output is a probability distribution over the classes
+  beta: 0.5 # weights balance between task AFC-BX
+  train_backbone: True # if True, the backbone is trained
+trainer:
+  loss_1: mse # loss function AFC
+  loss_2: mse # loss function BX
+  warmup_epochs: 50 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
+  optimizer:
+    lr: 0.001 # initial learning rate
+    weight_decay: 0.00001 # weight decay
+  scheduler: # allow to change learning rate during training
+    mode: min
+    patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+    min_lr: 1e-8
+    factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 60 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 300
+  normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
+  batch_size: 128

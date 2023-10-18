@@ -8,12 +8,11 @@ device:
 data:
   cv: loCo
   fold_dir: data/processed/AFC/loCo # folder where upload the CV splits at patient level
-  model_dir: models/loCo # folder to save trained model
-  report_dir: reports/loCo # folder to save results
+  model_dir: models/AFC/loCo # folder to save trained model
+  report_dir: reports/AFC/loCo # folder to save results
   classes: # name of classes
     - MILD
     - SEVERE
-  batch_size: 32
   modes:
     img:
       loader_name: custom_preprocessing
@@ -28,18 +27,3 @@ data:
         masked: True
         bbox_resize: True
 
-model:
-  model_name: single
-  task: morbidity
-  pretrained: False # if this parameter is None, the model is trained from scratch
-  dropout_rate: 0.50
-
-trainer:
-  optimizer:
-    lr: 0.001 # initial learning rate
-    weight_decay: 0.00001 # weight decay
-  scheduler: # allow to change learning rate during training
-    mode: min
-    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 40 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 300

@@ -8,7 +8,6 @@ import torch
 from PIL import Image
 from skimage import morphology, color, transform, filters
 from skimage.exposure import equalize_adapthist
-
 from .utils_path import files_in_folder
 
 
@@ -59,7 +58,6 @@ def PreprocessDicom(img, clip_limit=0.01, med_filt=3, clahe=False, filter=False,
     :param med_filt: median filter kernel size
     :return: (Rows, Cols)
     """
-    img = img.astype('float32')/img.max()
     if clahe:
         img = equalize_adapthist(
             img, clip_limit=clip_limit)
@@ -200,21 +198,39 @@ def get_mask(img, mask): # todo: img[~mask]
     return img * boolean_mask
 
 
-def get_box(img, box, masked=False):
+def get_box(img, box_, masked=False, border_add=5, **kwargs):
     """
     Returns the image inside the bounding box, if the parameter masked is true the image is padded with zeros; otherwise
     it's needed to pad the image with real values from the image. The padding is done in order to have a squared image
     Args:
         img: ndarray of shape (H, W)
-        box: list of 4 values [x, y, w, h]
+        box_: list of 4 values [x, y, w, h]
         masked: ndarray of shape (H, W), type bool
 
     Returns:
         the img padded
     """
+
     # BBOX parameters = [x, y, w, h]
-    box = [int(b) for b in box]
+    box = [int(b) for b in box_]
     # Sides
+    if border_add == 0:
+        pass
+    else:
+        pixel_add_w = ((box[2] * border_add) // 100) // 2
+        pixel_add_h = ((box[3] * border_add) // 100) // 2
+
+        if box[0] - pixel_add_w < 0:
+            pixel_add_w = pixel_add_w - abs(box[0] - pixel_add_w)
+        if box[0] + box[2] + pixel_add_w > img.shape[1]:
+            pixel_add_w = pixel_add_w - abs(box[0] + box[2] + pixel_add_w - img.shape[1])
+        if box[1] - pixel_add_h < 0:
+            pixel_add_h = pixel_add_h - abs(box[1] - pixel_add_h)
+        if box[1] + box[3] + pixel_add_h > img.shape[0]:
+            pixel_add_h = pixel_add_h - abs(box[1] + box[3] + pixel_add_h - img.shape[0])
+
+        box = [box[0] - pixel_add_w, box[1] - pixel_add_h, box[2] + (2 * pixel_add_w), box[3] + ( 2 * pixel_add_h)]
+
     l_w = box[2]
     l_h = box[3]
 
@@ -231,6 +247,8 @@ def get_box(img, box, masked=False):
             img_pad = np.pad(img_to_box, ((0, 0), (int(left_down), int(rigth_top))), constant_values=(0, 0))
         elif l_h < l_w:
             img_pad = np.pad(img_to_box, ((int(left_down), int(rigth_top)), (0, 0)), constant_values=(0, 0))
+        else:
+            return img_to_box
         return img_pad
 
     else:
@@ -245,8 +263,13 @@ def get_box(img, box, masked=False):
                 shift = abs(box[0] + box[2] + rigth_top - img_h)
                 left_down = int(left_down + shift)
                 rigth_top = int(rigth_top - shift)
-            img_to_box = img[box[1]: box[1] + box[3], box[0] - left_down: box[0] + box[2] + rigth_top]
-            return img_to_box
+            if box[0] - left_down < 0:
+                return img[box[1]: box[1] + box[3], : box[0] + box[2] + rigth_top]
+            elif box[0] + box[2] + rigth_top > img_w:
+                return img[box[1]: box[1] + box[3], box[0] - left_down:]
+            else:
+                return img[box[1]: box[1] + box[3], box[0] - left_down: box[0] + box[2] + rigth_top]
+
         elif l_h < l_w:
             if box[1] < left_down:
                 shift = abs(box[1] - left_down)
@@ -257,8 +280,14 @@ def get_box(img, box, masked=False):
                 left_down = int(left_down + shift)
                 rigth_top = int(rigth_top - shift)
 
-            img_to_box = img[box[1] - left_down: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
-            return img_to_box
+            if box[1] - left_down < 0:
+                return img[: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
+            elif box[1] + box[3] + rigth_top > img_h:
+                return img[box[1] - left_down: , box[0]: box[0] + box[2]]
+            else:
+                return img[box[1] - left_down: box[1] + box[3] + rigth_top, box[0]: box[0] + box[2]]
+        elif l_h == l_w:
+            return img[box[1]: box[1] + box[3], box[0]: box[0] + box[2]]
 
 
 
@@ -273,6 +302,12 @@ def normalize(img, min_val=None, max_val=None):
         min_val = img.min()
     if not max_val:
         max_val = img.max()
+    if max_val == min_val:
+        print('Warning: max and min values are equal')
+        return img
+    norm_mean, norm_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+
+
     img = (img - min_val) / (max_val - min_val)
     # img -= img.mean()
     # img /= img.std()

@@ -4,16 +4,57 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a6295acc-a524-4d5a-8135-ac9d0ee7da35" name="Changes" comment="commit &lt;exp_morbidity_parallel.sh, launch_bash.py, train_morbidity_SingleTask.py, train_severity_SingleTask.py, utils_data.py, utils_model.py&gt;" />
+    <list default="true" id="a6295acc-a524-4d5a-8135-ac9d0ee7da35" name="Changes" comment="Change BRIXIA structure">
+      <change afterPath="$PROJECT_DIR$/configs/bash_experiments/bash_patomica.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/requirements/BX/5/severity_singletask_1/severity_singletask_regression-consistent_5_Batch128_LR0.001_warmup__loss_brixia_Drop0.5_unfreeze__Entire_LungBbox/densenet121_CXR/0/model_densenet121_CXR.pt.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/requirements/BX/5/severity_singletask_1/severity_singletask_regression-consistent_5_Batch128_LR0.003_warmup__loss_brixia_Drop0.5_unfreeze__Entire_LungBbox/densenet121_CXR/0/model_densenet121_CXR.pt.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/requirements/BX/5/severity_singletask_1/severity_singletask_regression-consistent_5_Batch128_LR0.003_warmup__loss_brixia_Drop0.5_unfreeze__Entire_LungBbox/densenet121_CXR/1/model_densenet121_CXR.pt.pt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/bash/out_1478067.out" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/runConfigurations/severity_debug.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/runConfigurations/severity_debug.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/common/[0]_results_prediction_densenet121_CXR.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/common/[all]_test_results_densenet121_CXR.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/common/common_severity.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/common/common_severity.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/file_canc_job" beforeDir="false" afterPath="$PROJECT_DIR$/file_canc_job" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/create_final_report.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/create_final_report.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/launch_bash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/launch_bash.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/train_multi.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/train_multi.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/train_severity_SingleTask.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils_model.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="DjangoConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)">
+    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="severity" />
+        <entry key="$USER_HOME$/Desktop/PHD/PROGETTI/ITA-CINA/ANNO1/CODICE_ITA_CHINA/ItaChinaCovid19" value="de27d40d9bf04bb0bad6d667c83144905db0eab1" />
+        <entry key="$PROJECT_DIR$" value="2c35005a6077f8e9577fcbe9eebf86bb08dcd21b" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -38,39 +79,56 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
   <component name="ProjectId" id="2T6OEEzXxXvLfuz98xuhAQ6MJZz" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Documents/GitHub/COVID19-ItaChina&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;severity&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Documents/GitHub/COVID19-ItaChina/weights/chestXnet&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PythonContentEntriesConfigurable&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/configs" />
-      <recent name="$PROJECT_DIR$/src" />
-      <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/data" />
+      <recent name="$PROJECT_DIR$/weights/chestXnet" />
+      <recent name="$PROJECT_DIR$/configs/bash_experiments" />
+      <recent name="$PROJECT_DIR$/src/bash" />
+      <recent name="$PROJECT_DIR$/configs/5/severity" />
+      <recent name="$PROJECT_DIR$/configs/5/morbidity" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/models/AFC/loCo/morbidity_singletask_BINA" />
+      <recent name="$PROJECT_DIR$/models/BX/5/severity_singletask_1/severity_singletask_regression-area_5_Batch64_LR0.001_Drop0.25_Entire_LungBbox/resnet18/1" />
+      <recent name="$PROJECT_DIR$/reports/AFC/loCo/morbidity_singletask_22" />
+      <recent name="$PROJECT_DIR$/configs/loCo/morbidity" />
       <recent name="$PROJECT_DIR$/configs/5/morbidity" />
-      <recent name="$PROJECT_DIR$/configs" />
     </key>
   </component>
-  <component name="RunManager">
-    <configuration default="true" type="DjangoTestsConfigurationType">
+  <component name="RunManager" selected="Python.severity_debug">
+    <configuration name="Create_Final_Report" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -78,32 +136,21 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="TARGET" value="" />
-      <option name="SETTINGS_FILE" value="" />
-      <option name="CUSTOM_SETTINGS" value="false" />
-      <option name="USE_OPTIONS" value="false" />
-      <option name="OPTIONS" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
-      <module name="COVID19-ItaChina" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="ADDITIONAL_ARGS" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/postprocessing/Create_Final_Report.py" />
+      <option name="PARAMETERS" value="-m severity -exp BINA -s=&quot;&quot;" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+    <configuration name="ValidationFilesCreation" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -111,12 +158,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/datasets/usage/ValidationFilesCreation.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -125,7 +172,8 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="train_morbidity_SingleTask" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+    <configuration name="debug_morbidity" type="PythonConfigurationType" factoryName="Python">
+      <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -137,10 +185,9 @@
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py" />
-      <option name="PARAMETERS" value="--cfg_file configs/afc_cv5_debug.yaml --model_name vgg11 --output_dir data/processed --input_data data/AIforCOVID/processed/box_data_AXF123.xlsx" />
+      <option name="PARAMETERS" value="--cfg_file configs/afc_cv5_debug.yaml --model_name resnet50_ChexPert --id_exp checknow" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -148,116 +195,112 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="Python.FlaskServer">
+    <configuration name="multi_serial_debug" type="PythonConfigurationType" factoryName="Python">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.10 (covid_env)" />
       <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="launchJavascriptDebuger" value="false" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" />
+      <option name="PARAMETERS" value="--model_name resnet18 --cfg_file configs/loCo/multi/serial_config_multitask_loCo6.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="Tox" factoryName="Tox">
+    <configuration name="study_img_data" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocessing/AFC/study_img_data.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="docs" factoryName="Docutils task">
+    <configuration name="tester" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="docutils_input_file" value="" />
-      <option name="docutils_output_file" value="" />
-      <option name="docutils_params" value="" />
-      <option name="docutils_task" value="" />
-      <option name="docutils_open_in_browser" value="false" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tester.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="docs" factoryName="Sphinx task">
+    <configuration name="train_MultiObjectiveModel_parallel" type="PythonConfigurationType" factoryName="Python">
       <module name="COVID19-ItaChina" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="docutils_input_file" value="" />
-      <option name="docutils_output_file" value="" />
-      <option name="docutils_params" value="" />
-      <option name="docutils_task" value="" />
-      <option name="docutils_open_in_browser" value="false" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py" />
+      <option name="PARAMETERS" value="--model_name resnet18 --cfg_file configs/PorM_multi_loCo18_debug.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="tests" factoryName="Autodetect">
-      <module name="COVID19-ItaChina" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="Doctests">
-      <module name="COVID19-ItaChina" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="" />
-      <option name="TEST_TYPE" value="TEST_SCRIPT" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="tests" factoryName="py.test">
-      <module name="COVID19-ItaChina" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
+    <list>
+      <item itemvalue="Python.ValidationFilesCreation" />
+      <item itemvalue="Python.train_MultiObjectiveModel_parallel" />
+      <item itemvalue="Python.multi_serial_debug" />
+      <item itemvalue="Python.severity_debug" />
+      <item itemvalue="Python.debug_morbidity" />
+      <item itemvalue="Python.study_img_data" />
+      <item itemvalue="Python.tester" />
+      <item itemvalue="Python.Create_Final_Report" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.Create_Final_Report" />
+        <item itemvalue="Python.study_img_data" />
+        <item itemvalue="Python.tester" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -273,6 +316,77 @@
       <workItem from="1690753026378" duration="3117000" />
       <workItem from="1690786793041" duration="1280000" />
       <workItem from="1691393982389" duration="482000" />
+      <workItem from="1691405803260" duration="4394000" />
+      <workItem from="1691476145794" duration="4020000" />
+      <workItem from="1691574464560" duration="2173000" />
+      <workItem from="1691586913417" duration="1197000" />
+      <workItem from="1691738322537" duration="2818000" />
+      <workItem from="1692890023253" duration="1771000" />
+      <workItem from="1692956223601" duration="875000" />
+      <workItem from="1693148445044" duration="13391000" />
+      <workItem from="1693409626158" duration="1030000" />
+      <workItem from="1693476772680" duration="1280000" />
+      <workItem from="1693497235652" duration="7923000" />
+      <workItem from="1693665148137" duration="1239000" />
+      <workItem from="1693667473087" duration="177000" />
+      <workItem from="1693811771641" duration="10970000" />
+      <workItem from="1693922494469" duration="7455000" />
+      <workItem from="1693986841402" duration="17270000" />
+      <workItem from="1694075100741" duration="7572000" />
+      <workItem from="1694157576524" duration="25368000" />
+      <workItem from="1694342364001" duration="3375000" />
+      <workItem from="1694418550144" duration="13914000" />
+      <workItem from="1694503020371" duration="6840000" />
+      <workItem from="1694521582981" duration="17266000" />
+      <workItem from="1694685096188" duration="1351000" />
+      <workItem from="1694786979003" duration="3695000" />
+      <workItem from="1694845119901" duration="816000" />
+      <workItem from="1694854092677" duration="1809000" />
+      <workItem from="1694880616484" duration="592000" />
+      <workItem from="1694897730096" duration="694000" />
+      <workItem from="1694941049360" duration="1941000" />
+      <workItem from="1695017660636" duration="9628000" />
+      <workItem from="1695113875289" duration="820000" />
+      <workItem from="1695225267090" duration="1331000" />
+      <workItem from="1695281263568" duration="14608000" />
+      <workItem from="1695366458473" duration="61000" />
+      <workItem from="1695366537117" duration="2565000" />
+      <workItem from="1695454404717" duration="10015000" />
+      <workItem from="1695488397465" duration="677000" />
+      <workItem from="1695544373243" duration="10255000" />
+      <workItem from="1695638454450" duration="7298000" />
+      <workItem from="1695653521295" duration="5918000" />
+      <workItem from="1695713205524" duration="7906000" />
+      <workItem from="1695722798409" duration="20151000" />
+      <workItem from="1695829060397" duration="1458000" />
+      <workItem from="1695893824273" duration="3398000" />
+      <workItem from="1695912664335" duration="10285000" />
+      <workItem from="1696085276042" duration="6360000" />
+      <workItem from="1696177008262" duration="1329000" />
+      <workItem from="1696246913339" duration="24005000" />
+      <workItem from="1696314320963" duration="7845000" />
+      <workItem from="1696322362349" duration="23290000" />
+      <workItem from="1696363948123" duration="18000" />
+      <workItem from="1696363976328" duration="201000" />
+      <workItem from="1696364180425" duration="404000" />
+      <workItem from="1696401609200" duration="22274000" />
+      <workItem from="1696490434210" duration="11776000" />
+      <workItem from="1696522284690" duration="556000" />
+      <workItem from="1696534605771" duration="1537000" />
+      <workItem from="1696539854881" duration="1395000" />
+      <workItem from="1696576843695" duration="10679000" />
+      <workItem from="1696682921757" duration="36700000" />
+      <workItem from="1696840559625" duration="12158000" />
+      <workItem from="1696913459735" duration="4372000" />
+      <workItem from="1697095468597" duration="1784000" />
+      <workItem from="1697098079900" duration="8608000" />
+      <workItem from="1697189232307" duration="614000" />
+      <workItem from="1697189924402" duration="11002000" />
+      <workItem from="1697208811965" duration="17757000" />
+      <workItem from="1697272874426" duration="16316000" />
+      <workItem from="1697384112614" duration="4363000" />
+      <workItem from="1697439843871" duration="15613000" />
+      <workItem from="1697614876698" duration="5932000" />
     </task>
     <task id="LOCAL-00001" summary="first commit">
       <option name="closed" value="true" />
@@ -354,7 +468,47 @@
       <option name="project" value="LOCAL" />
       <updated>1690787887873</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="commit merge">
+      <option name="closed" value="true" />
+      <created>1691403293570</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1691403293570</updated>
+    </task>
+    <task id="LOCAL-00012" summary="commit some correction for training morbidity/severity">
+      <option name="closed" value="true" />
+      <created>1692892895312</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1692892895312</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Multi-Task Learning Paradigm">
+      <option name="closed" value="true" />
+      <created>1694345400288</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1694345400288</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Multi-Task LAST UPDATE">
+      <option name="closed" value="true" />
+      <created>1696085732017</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1696085732017</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Change BRIXIA structure">
+      <option name="closed" value="true" />
+      <created>1697222981509</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1697222981509</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -404,6 +558,7 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="first commit" />
     <MESSAGE value="exclude models and reports" />
     <MESSAGE value="excluded files" />
@@ -411,7 +566,12 @@
     <MESSAGE value="correction to configs files" />
     <MESSAGE value="train_morbidity.sh, train_morbidity_debug.sh" />
     <MESSAGE value="commit &lt;exp_morbidity_parallel.sh, launch_bash.py, train_morbidity_SingleTask.py, train_severity_SingleTask.py, utils_data.py, utils_model.py&gt;" />
-    <option name="LAST_COMMIT_MESSAGE" value="commit &lt;exp_morbidity_parallel.sh, launch_bash.py, train_morbidity_SingleTask.py, train_severity_SingleTask.py, utils_data.py, utils_model.py&gt;" />
+    <MESSAGE value="commit merge" />
+    <MESSAGE value="commit some correction for training morbidity/severity" />
+    <MESSAGE value="Multi-Task Learning Paradigm" />
+    <MESSAGE value="Multi-Task LAST UPDATE" />
+    <MESSAGE value="Change BRIXIA structure" />
+    <option name="LAST_COMMIT_MESSAGE" value="Change BRIXIA structure" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -421,17 +581,80 @@
           <line>4</line>
           <option name="timeStamp" value="51" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tester.py</url>
+          <line>10</line>
+          <option name="timeStamp" value="61" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tester.py</url>
+          <line>23</line>
+          <option name="timeStamp" value="62" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocessing/AFC/study_img_data.py</url>
+          <line>53</line>
+          <option name="timeStamp" value="190" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocessing/AFC/study_img_data.py</url>
+          <line>16</line>
+          <option name="timeStamp" value="191" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/utils/utils_images.py</url>
+          <line>305</line>
+          <option name="timeStamp" value="290" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/utils/utils_model.py</url>
+          <line>911</line>
+          <option name="timeStamp" value="320" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/train_morbidity_SingleTask.py</url>
+          <line>262</line>
+          <option name="timeStamp" value="380" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/utils/utils_model.py</url>
+          <line>608</line>
+          <option name="timeStamp" value="419" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/utils/utils_data.py</url>
+          <line>707</line>
+          <option name="timeStamp" value="449" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py</url>
+          <line>289</line>
+          <option name="timeStamp" value="473" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/train_MultiObjectiveModel.py</url>
+          <line>205</line>
+          <option name="timeStamp" value="474" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="self" />
+        <watch expression="dataloaders" />
       </configuration>
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$severity_debug.coverage" NAME="severity_debug Coverage Results" MODIFIED="1691154540389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1691137497251" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="train_morbidity_SingleTask Coverage Results" MODIFIED="1690979244113" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$ValidationFilesCreation.coverage" NAME="ValidationFilesCreation Coverage Results" MODIFIED="1696513631472" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$tester.coverage" NAME="tester Coverage Results" MODIFIED="1693838831776" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_morbidity_SingleTask.coverage" NAME="debug_morbidity Coverage Results" MODIFIED="1695820589544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_MultiObjectiveModel_serial.coverage" NAME="multi_serial_debug Coverage Results" MODIFIED="1696259050857" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$debug_morbidity.coverage" NAME="debug_morbidity Coverage Results" MODIFIED="1696688921463" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$study_img_data.coverage" NAME="study_img_data Coverage Results" MODIFIED="1694525351712" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$train_MultiObjectiveModel.coverage" NAME="train_MultiObjectiveModel Coverage Results" MODIFIED="1694792061441" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$multi_serial_debug.coverage" NAME="multi_serial_debug Coverage Results" MODIFIED="1697445891873" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$Create_Final_Report.coverage" NAME="Create_Final_Report Coverage Results" MODIFIED="1696868300187" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/COVID19_ItaChina$severity_debug.coverage" NAME="severity_debug Coverage Results" MODIFIED="1697458426671" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
