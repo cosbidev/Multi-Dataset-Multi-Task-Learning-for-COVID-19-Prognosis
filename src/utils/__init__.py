@@ -1,4 +1,4 @@
-from .utils_data import load_img, DatasetImgAFC, rotate, chunks, seed_worker, MultiTaskDataset
+from .utils_data import load_img, DatasetImgAFC, rotate, chunks, seed_worker, MultiTaskDataset, CustomSampler
 from .utils_general import *
 from .util_unet import *
 from .utils_path import files_in_folder, mkdir

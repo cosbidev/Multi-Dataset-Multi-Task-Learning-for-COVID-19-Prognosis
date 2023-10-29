@@ -1,0 +1,23 @@
+model:
+  freezing: False
+  model_name: single
+  task: morbidity
+  pretrained: False # if this parameter is None, the model is trained from scratch
+  dropout_rate: 0.5
+  softmax: True # if True, the output is a probability distribution over the classes
+
+trainer:
+  loss: bce # loss function
+  warmup_epochs: 40  # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
+  optimizer:
+    lr: 0.001 # initial learning rate
+    weight_decay: 0.00001 # weight decay
+  scheduler: # allow to change learning rate during training
+    mode: min
+    patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+    min_lr: 1e-8
+    factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 65 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 300
+  normalizer: Imagenet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
+  batch_size: 64

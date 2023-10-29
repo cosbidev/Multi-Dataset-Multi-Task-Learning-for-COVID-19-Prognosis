@@ -41,9 +41,6 @@ echo "checkpoint: $checkpoint";
 
 
 
-
-
-
 #!/usr/bin/bash
 # RUN YOUR PROGRAM
 python launch_bash.py -e="$config_mode" -id="$id_exp" -k morbidity $checkpoint

@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
 #SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-6:00:00
+#SBATCH -t 0-10:00:00
 # Output files
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out
 # Mail me
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-
 echo  "cfg : $config_dir", "with model: $model_name"
 
 
@@ -34,7 +33,6 @@ model=$model_name
 id_exp=$id_exp
 
 checkpoint=$checkpoint
-
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
 python src/models/train_severity_SingleTask.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp} $checkpoint

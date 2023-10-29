@@ -10,6 +10,7 @@ import numpy as np
 from skimage import exposure, filters
 from src import preprocess
 
+
 def _dynamic_to_4D_image(image):
     shape = tf.shape(image)
     original_rank = tf.rank(image)

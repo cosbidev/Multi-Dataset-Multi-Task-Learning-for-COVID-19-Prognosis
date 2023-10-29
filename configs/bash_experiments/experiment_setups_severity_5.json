@@ -1,14 +1,8 @@
 [
   {
-    "config_file": "bx_config_singletask_cv5.yaml",
-    "name": "cv5",
-    "fold": 5,
-    "models": "['densenet121_CXR', 'mobilenet_v2']"
-  },
-  {
     "config_file": "bx_config_singletask_Masked_cv5.yaml",
     "name": "cv5",
     "fold": 5,
-    "models": "['densenet121_CXR','mobilenet_v2']"
+    "models": "['densenet161', 'densenet201','wide_resnet50_2']"
   }
 ]
