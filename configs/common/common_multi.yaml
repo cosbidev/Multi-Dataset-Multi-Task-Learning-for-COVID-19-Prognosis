@@ -5,11 +5,13 @@ model:
   head: H1 # head of the model (H1, H2, H3)
   pretrained: ["BINA", "BINA"] # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.50 # dropout rate
-  regression_type: area
+  regression_type: area # consistent or area
   softmax: True # if True, the output is a probability distribution over the classes
   beta: 0.5 # weights balance between task AFC-BX
   train_backbone: True # if True, the backbone is trained
+  structure_bx: none
 trainer:
+  alpha: 0.7 # weight of the severity loss, 0.0 only consistency loss, 1.0 only sparsity BCE loss
   loss_1: mse # loss function AFC
   loss_2: mse # loss function BX
   warmup_epochs: 50 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
@@ -21,7 +23,7 @@ trainer:
     patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-8
     factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 60 # if the validation loss do not improve for x epochs stop training
-  max_epochs: 300
+  early_stopping: 50 # if the validation loss do not improve for x epochs stop training
+  max_epochs: 300 # maximum number of epochs
   normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
-  batch_size: 128
+  batch_size: 64

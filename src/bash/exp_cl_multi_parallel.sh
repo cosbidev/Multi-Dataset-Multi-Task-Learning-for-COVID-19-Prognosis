@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
 #SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-6:30:00
+#SBATCH -t 0-1:00:00
 # Output files
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out
 # Mail me
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-echo  "cfg : $config_dir", "with model: $model_name"
 
 # Activate venv
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/covid-env || exit
 source bin/activate
-
-# Load modules
 
 module purge
 module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
@@ -22,16 +19,32 @@ module load scikit-image/0.19.3-foss-2022a
 module load scikit-learn/1.1.2-foss-2022a
 module load  OpenCV/4.6.0-foss-2022a-CUDA-11.7.0-contrib
 # Executes the code
-cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID || exit
+cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/src/bash/ || exit
 
-config=$config_dir
-model=$model_name
-id_exp=$id_exp
+# Stampa degli argomenti di input
 
-checkpoint=$checkpoint
-echo "$checkpoint"
+#!/usr/bin/env bashc
+
+while getopts c:i:h flag
+do
+    # shellcheck disable=SC2220
+    case "${flag}" in
+        c) config_mode=${OPTARG};;
+        i) id_exp=${OPTARG};;
+        h) checkpoint='-c';;
+    esac
+done
+echo "config_mode: $config_mode";
+echo "id_exp: $id_exp";
+echo "checkpoint: $checkpoint";
+
+
+
+
+
+
 #!/usr/bin/bash
-# Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_morbidity_SingleTask.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp} $checkpoint
+# RUN YOUR PROGRAM
+python launch_bash.py -e="$config_mode" -id="$id_exp" -k multi_cl $checkpoint
 # Deactivate venv
 deactivate

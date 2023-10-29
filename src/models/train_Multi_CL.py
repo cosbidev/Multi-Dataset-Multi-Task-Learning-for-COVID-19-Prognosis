@@ -1,9 +1,12 @@
 import argparse
+import gc
 import glob
 import itertools
 import shutil
 import sys
 import os
+
+import numpy as np
 
 print('Python %s on %s' % (sys.version, sys.platform))
 print(os.getcwd(), ' the current working directory')
@@ -13,12 +16,16 @@ from easydict import EasyDict
 from src.utils.utils_visualization import plot_training_multi
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import pandas as pd
 import yaml
-from src import mkdir, seed_all, MultiTaskDataset, seed_worker, get_MultiTaskModel, evaluate_morbidity, is_debug, train_MultiTask, IdentityMultiHeadLoss, Logger, compute_report_metrics, evaluate_regression
+from src import (mkdir, seed_all, MultiTaskDataset, seed_worker, get_MultiTaskModel, evaluate_morbidity, is_debug, train_MultiTask, IdentityMultiHeadLoss, Logger, compute_report_metrics,
+                 evaluate_regression, CustomSampler, print_CUDA_info)
 from src.utils import utils_data
+
+
 # Configuration file
 def main():
     # Configuration file
@@ -34,9 +41,10 @@ def main():
     with open(args.cfg_file) as file:
         cfg = yaml.load(file, Loader=yaml.FullLoader)
 
-    with open('configs/common/common_multi.yaml') as file_common:
+    with open('configs/common/common_multi_curriculum.yaml') as file_common:
         cfg_common = yaml.load(file_common, Loader=yaml.FullLoader)
     cfg.update(cfg_common)
+    cfg['exp_name'] = cfg['exp_name'] + f'_Curriculum'
     del cfg_common
     # Seed everything
     seed_all(cfg['seed'])
@@ -149,30 +157,6 @@ def main():
 
         # Data
 
-        if is_debug():
-            fold_data['train'] = fold_data['train'][740:1040:7]
-            fold_data['val'] = fold_data['val'][113:413:7]
-            fold_data['test'] = fold_data['test'][113:413:7]
-
-        # ------------------- DATA -------------------
-        if True:
-            datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg) for step in steps}
-            for step in steps:
-                print(f'{step} dataset size: {len(datasets[step])}')
-                datasets[step].set_normalize_strategy(cfg['trainer']['normalizer'])
-            # ------------------- Separate Loaders M and S-------------------
-            subset_selector = lambda step, class_d: torch.utils.data.Subset(datasets[step], datasets[step].data[datasets[step].data['dataset_class'] == class_d].index.to_list())
-            data_loaders_AFC = {
-                'val': torch.utils.data.DataLoader(subset_selector('val', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                'test': torch.utils.data.DataLoader(subset_selector('test', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-            data_loaders_BX = {
-                'val': torch.utils.data.DataLoader(subset_selector('val', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                'test': torch.utils.data.DataLoader(subset_selector('test', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-            # MULTITASK LOADERS
-            data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
-                            'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                            'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-            idx_to_class = datasets['train'].m_idx_to_class
         # ------------------- MODEL -------------------
 
         model = get_MultiTaskModel(kind=cfg['kind'], backbone=model_name, cfg=cfg, device=device)
@@ -182,7 +166,8 @@ def main():
 
             task = {'AFC': 'morbidity', 'BX': 'severity'}
 
-            selector_exp_folder = {5: lambda name_dataset, id_: f'./models/{name_dataset}/5/{task[name_dataset]}_singletask_{id_}/','loCo': lambda name_dataset, id_: f'./models/{name_dataset}/loCo/{task[name_dataset]}_singletask_{id_}/',}
+            selector_exp_folder = {5: lambda name_dataset, id_: f'./models/{name_dataset}/5/{task[name_dataset]}_singletask_{id_}/',
+                                   'loCo': lambda name_dataset, id_: f'./models/{name_dataset}/loCo/{task[name_dataset]}_singletask_{id_}/', }
 
             id_AFC = ids_experiment_to_load[0]
             id_BX = ids_experiment_to_load[1]
@@ -215,7 +200,6 @@ def main():
                 model_dir_weights_S = os.path.join(exp_folder_BX, model_name, str(fold_id_s))
                 fold_id_m = mapper_folder[fold]['M']
                 model_dir_weights_M = os.path.join(exp_folder_AFC, model_name, str(fold_id_m))
-
 
             files_S = list(os.scandir(model_dir_weights_S))
             if len(files_S) > 1:
@@ -267,35 +251,121 @@ def main():
             print("Training from scratch for the fold ", fold)
         model = model.to(device)
 
-        # Multi Head Identity Loss Handling
-        criterion = IdentityMultiHeadLoss(cfg=cfg).to(device)
-        if not model_trained:
-            # Optimizer
-            optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
-            # LR Scheduler
+        # CURRICULUM LEARNING
+        curriculum_cfg = cfg['curriculum']
+        dictionary_step = [{'AFC': step, 'BX': 100 - step} for step in curriculum_cfg['steps']]
+        print(''.center(len(' Curriculum Learning '), '-'))
+        # ------------------- DATA -------------------
+        if is_debug():
+            fold_data['train'] = fold_data['train'][740:1040:7]
+            fold_data['val'] = fold_data['val'][113:413:7]
+            fold_data['test'] = fold_data['test'][113:413:7]
 
-            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                       mode=cfg['trainer']['scheduler']['mode'],
-                                                       patience=cfg['trainer']['scheduler']['patience'],
-                                                       min_lr=float(cfg['trainer']['scheduler']['min_lr']),
-                                                       factor=cfg['trainer']['scheduler']['factor'])
+            # Multi Head Identity Loss Handling
+            cfg['curriculum']['step_running'] = 2
+            criterion = IdentityMultiHeadLoss(cfg=cfg).to(device)
+        if True:
+            datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg) for step in steps}
+            for step in steps:
+                print(f'{step} dataset size: {len(datasets[step])}')
+                datasets[step].set_normalize_strategy(cfg['trainer']['normalizer'])
 
-            # Train model
+        for running_step, step_composition in enumerate(dictionary_step):
 
-            model, history = train_MultiTask(model=model,
-                                             model_file_name=f'{model_cfg.head}_{model_name}',
-                                             dataloaders=data_loaders,
-                                             cfg=cfg,
-                                             criterion=criterion,
-                                             optimizer=optimizer,
-                                             scheduler=scheduler,
-                                             num_epochs=cfg['trainer']['max_epochs'],
-                                             max_epochs_stop=cfg['trainer']['early_stopping'],
-                                             model_dir=model_fold_dir,
-                                             device=device)
+            print(''.center(len(' Curriculum Learning '), '-'))
+            # ------------------- Separate Loaders M and S-------------------
+            subset_selector = lambda step, class_d: torch.utils.data.Subset(datasets[step], datasets[step].data[datasets[step].data['dataset_class'] == class_d].index.to_list())
+            data_loaders_AFC = {
+                'train': DataLoader(subset_selector('train', 'AFC'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
+                'val': DataLoader(subset_selector('val', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+                'test': DataLoader(subset_selector('test', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+            data_loaders_BX = {
+                'train': DataLoader(subset_selector('train', 'BX'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
+                'val': DataLoader(subset_selector('val', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+                'test': DataLoader(subset_selector('test', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+            # MULTITASK LOADERS
+            if step_composition['AFC'] == 0:
+                data_loaders = data_loaders_BX
+                idx_to_class = datasets['train'].s_idx_to_class
+            elif step_composition['BX'] == 0:
+                data_loaders = data_loaders_AFC
+                idx_to_class = datasets['train'].m_idx_to_class
+            else:
 
-            # Plot Training
-            plot_training_multi(history, plot_training_fold_dir)
+                # DEFINE RATIO FOR DATASETS:
+                ratio = step_composition['AFC'] / 100 # PERC from dataset1, 80% from dataset2
+                sampler = CustomSampler(
+                    subset_selector('train', 'AFC'),
+                    subset_selector('train', 'BX'), ratio, batch_size=batch_size)
+                data_loader_train_curriculum = DataLoader(torch.utils.data.ConcatDataset([subset_selector('train', 'AFC'), subset_selector('train', 'BX')]),
+                                                          batch_sampler=sampler,
+                                                          num_workers=num_workers,
+                                                          worker_init_fn=seed_worker,
+                                                          )
+
+                # Process your batch here
+                data_loaders = {'train': data_loader_train_curriculum,
+                                'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+                                'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+                idx_to_class = datasets['train'].m_idx_to_class
+            # Multi Head Identity Loss Handling
+            cfg['curriculum']['step_running'] = running_step
+            criterion = IdentityMultiHeadLoss(cfg=cfg).to(device)
+            if not model_trained:
+                # Optimizer
+                if running_step == 0:
+                    optimizer = optim.Adam(model.parameters(), lr=cfg['trainer']['optimizer']['lr'], weight_decay=cfg['trainer']['optimizer']['weight_decay'])
+                    # LR Scheduler
+                    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                               mode=cfg['trainer']['scheduler']['mode'],
+                                                               patience=cfg['trainer']['scheduler']['patience'],
+                                                               min_lr=float(cfg['trainer']['scheduler']['min_lr']),
+                                                               factor=cfg['trainer']['scheduler']['factor'])
+
+                    # Train model using curriculum learning strategy
+
+
+                print_CUDA_info()
+                dict_single_CL_iteration, history_partial = train_MultiTask(model=model,
+                                                         model_file_name=f'{model_cfg.head}_{model_name}',
+                                                         dataloaders=data_loaders,
+                                                         cfg=cfg,
+                                                         criterion=criterion,
+                                                         optimizer=optimizer,
+                                                         scheduler=scheduler,
+                                                         num_epochs=curriculum_cfg['epochs'],
+                                                         max_epochs_stop=cfg['trainer']['early_stopping'],
+                                                         model_dir=model_fold_dir,
+                                                         device=device,
+                                                         save_model=False)
+                model = dict_single_CL_iteration['model']
+                optimizer = dict_single_CL_iteration['optimizer']
+                scheduler = dict_single_CL_iteration['scheduler']
+                lr = dict_single_CL_iteration['lr']
+
+                print_CUDA_info()
+                if step_composition['AFC'] != 0  and step_composition['BX'] != 0:
+                    del data_loaders, data_loader_train_curriculum, sampler
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                else:
+                    del data_loaders
+                    gc.collect()
+                    torch.cuda.empty_cache()
+
+                # Concatenate History:
+                if step_composition['AFC'] == 0:
+                    history_partial['step'] = np.repeat('Curriculum = BX', len(history_partial))
+                    history = history_partial
+                else:
+                    history_partial['step'] = np.repeat(f'Curriculum = BX : {step_composition["BX"]}, AFC : {step_composition["BX"]} ', len(history_partial))
+                    history = pd.concat([history, history_partial], axis=0).reset_index(drop=True)
+        # Save model after curriculum learning
+        torch.save(model.state_dict(), os.path.join(model_fold_dir, f'{model_name}' + '.pt'))
+        print('-----------------------------------'
+              '\n Best Model-MultiTask Saved in: %s' % (os.path.join(model_dir, f'{model_name}')))
+        # Plot Training
+        plot_training_multi(history, plot_training_fold_dir)
 
         loss = IdentityMultiHeadLoss(cfg=cfg)
         # ------------------- TEST -------------------

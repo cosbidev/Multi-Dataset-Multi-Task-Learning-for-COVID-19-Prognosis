@@ -11,7 +11,7 @@ from PIL import Image
 from scipy.ndimage import shift
 from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.interpolation import map_coordinates
-from torch.utils.data import IterableDataset, DataLoader
+from torch.utils.data import IterableDataset, DataLoader, Sampler
 from tqdm import tqdm
 
 from .utils_images import get_box, get_mask, normalize, find_bboxes
@@ -378,6 +378,56 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
     # To Tensor
     img = torch.Tensor(img.reshape(3, img_dim, img_dim) if img.shape[0] != 3 else img)"""
     return img
+
+
+class CustomSampler(Sampler):
+    def __init__(self, dataset1, dataset2, ratio, batch_size):
+
+        self.dataset1 = dataset1
+        self.dataset2 = dataset2
+        self.ratio_d1 = ratio
+
+        self.batch_size = batch_size
+
+        self.num_samples_dataset1 = int(batch_size * self.ratio_d1)
+        self.num_samples_dataset2 = batch_size - self.num_samples_dataset1
+
+        self.indices1 = np.arange(len(dataset1))
+        self.indices2 = np.arange(len(dataset2)) + len(dataset1)
+
+        np.random.shuffle(self.indices1)
+        np.random.shuffle(self.indices2)
+
+        self.current_idx1 = 0
+        self.current_idx2 = 0
+
+        self.max_batches = (len(dataset1) + len(dataset2)) // batch_size
+    def __iter__(self):
+        batch = []
+        batch_count = 0
+        while batch_count <= self.max_batches:
+            for _ in range(self.num_samples_dataset1):
+                if self.current_idx1 >= len(self.indices1):
+                    np.random.shuffle(self.indices1)
+                    self.current_idx1 = 0
+                batch.append(self.indices1[self.current_idx1])
+                self.current_idx1 += 1
+
+            for _ in range(self.num_samples_dataset2):
+                if self.current_idx2 >= len(self.indices2):
+                    np.random.shuffle(self.indices2)
+                    self.current_idx2 = 0
+                batch.append(self.indices2[self.current_idx2])
+                self.current_idx2 += 1
+
+            if len(batch) == self.batch_size:
+                yield batch
+                batch = []
+                batch_count += 1
+
+    def __len__(self):
+        total_batches = (len(self.dataset1) + len(self.dataset2)) // self.batch_size
+        return total_batches * self.batch_size
 
 
 class CustomIterableDataset(torch.utils.data.Dataset):

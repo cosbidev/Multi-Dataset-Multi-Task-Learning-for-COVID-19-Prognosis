@@ -10,7 +10,7 @@ def reportCreation():
     parser = argparse.ArgumentParser(description="Configuration File")
     parser.add_argument("--modality", "-m", help="Modalities", choices=['morbidity','severity', 'multi'], type=str, required=True)
     parser.add_argument("--name_exp", "-exp", help="model_name", default='MISE')
-    parser.add_argument("--structure", "-s", help="for Multi", default='', choices=['serial', 'parallel', ''])
+    parser.add_argument("--structure", "-s", help="for Multi", default='', choices=['serial', 'parallel', 'none'])
     parser.add_argument("--version", "-v", help="Version", default='all', choices=['all'])
     args = parser.parse_args()
 
@@ -120,6 +120,7 @@ def reportCreation():
                         continue
                     os.listdir(model_report_dir)
                     file_report = os.path.join(model_report_dir, f'[all]_test_results_{Model_folder}')
+
                     if modality_set[modality.lower()] == 2:
                         file_report = file_report + f'_BX.xlsx'
                     else:
@@ -127,6 +128,7 @@ def reportCreation():
                     print(file_report)
                     if os.path.exists(file_report):
                         file_result_cv = pd.read_excel(file_report, index_col=0)
+                        print(file_result_cv)
                         mean_row = file_result_cv.loc['mean', :].to_dict()
                         std_row = file_result_cv.loc['std', :].to_dict()
                         combined_results = {}
@@ -135,7 +137,7 @@ def reportCreation():
                             combined_results[key_mean + '_std'] = np.round(std_metric, 2)
                         df_resume_experiments.loc[Model_folder] = pd.Series(combined_results)
                 df_resume_experiments = df_resume_experiments.sort_values(by=['Acc_G_mean'], ascending=False)
-                df_resume_experiments.dropna(inplace=True)
+                #df_resume_experiments.dropna(inplace=True, axis=1)
                 save_combined[CV][type_of_run] = df_resume_experiments
                 save_name = Experiment_folder.name.split('singletask')[-1]
                 # Report folder

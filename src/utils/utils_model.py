@@ -1,5 +1,7 @@
 import itertools
 from collections import OrderedDict
+
+#import timm
 import torch
 import torch.nn as nn
 import numpy as np
@@ -57,21 +59,42 @@ def change_head(model, new_head, model_name):
     """
     if "resnet" in model_name or "shufflenet" in model_name or "resnext" in model_name or "googlenet" in model_name:
         model.fc = new_head
-    elif "vgg" in model_name or "mnasnet" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
+    elif "vgg" in model_name or "mobilenet" in model_name or "alexnet" in model_name:
         model.classifier[-1] = new_head
     elif "densenet" in model_name:
         model.classifier = new_head
     elif "squeezenet" in model_name:
         model.classifier[1] = new_head
+    elif "efficientnet" in model_name:
+        model.classifier = new_head
+    elif "vit" in model_name:
+        model.head = new_head
+
+
+# Try To TODO these experiments
+vit_eff_BACKBONES = ['efficientnet_lite0',
+                     'efficientnet_b0',
+                     'efficientnet_b0_gn',
+                     'efficientnet_lite1',
+                     'efficientnet_es',
+                     'vit_medium_patch16_gap_256',
+                     'vit_medium_patch16_reg4_gap_256',
+                     'vit_medium_patch16_reg4_256']
 
 
 def get_backbone(model_name=''):
     # Finetuning the convnet
     print("********************************************")
     model, in_features = None, 0
+
     if model_name == "resnet18":
         model = models.resnet18(pretrained=True)
         in_features = model.fc.in_features
+
+
+
+
+
     elif model_name == "googlenet":
         model = models.googlenet(pretrained=True)
         in_features = model.fc.in_features
@@ -173,6 +196,16 @@ def get_backbone(model_name=''):
         model = models.vgg16_bn(pretrained=True)
         in_features = model.classifier[-1].in_features
         # model.classifier[-1] = nn.Linear(in_features=4096, out_features=len(class_names), bias=True)
+
+    elif "efficientnet" in model_name:
+        model = timm.create_model(model_name, pretrained=True)
+        in_features = model.classifier.in_features
+    elif "vit" in model_name:
+        model = timm.create_model(model_name, pretrained=True)
+        in_features = model.head.in_features
+    else:
+        raise ValueError("Invalid model name")
+
     assert model is not None
     return model, in_features
 
@@ -268,7 +301,6 @@ def get_metrics_classification_severity(y_true, y_pred, regression_type='area'):
         accuracy_LL = 100 * (np.sum(y_true[:, 7] == score_pred_LL) / y_true.shape[0])
         accuracy_G = 100 * (np.sum(y_true[:, 8] == score_pred_G) / y_true.shape[0])
 
-
         max_value_l1 = np.sum(y_true[:, -1])
         max_value_exp = np.sum([np.sum([np.exp(y_true[row, i]) for i in range(6)]) for row in range(y_true.shape[0])])
         max_value_s = np.sum([np.sum([y_true[row, i] ** 2 for i in range(6)]) for row in range(y_true.shape[0])])
@@ -293,7 +325,6 @@ def get_metrics_classification_severity(y_true, y_pred, regression_type='area'):
         # accuracy distance L2 between predictions and true values for each area
         accuracy_distance_squared = 1 - Normalized_error_squared
 
-
         areas_dict = {'acc_a': 0.0,
                       'acc_b': 0.0,
                       'acc_c': 0.0,
@@ -309,10 +340,9 @@ def get_metrics_classification_severity(y_true, y_pred, regression_type='area'):
                 accuracy_distance_squared,
                 y_pred,
                 {'acc_boolean_accuracy': accuracy_G,
-                'acc_lung_r': accuracy_RR,
-                'acc_lung_l': accuracy_LL,
-                **areas_dict})
-
+                 'acc_lung_r': accuracy_RR,
+                 'acc_lung_l': accuracy_LL,
+                 **areas_dict})
 
 
 def get_metrics_regression(y_true, y_pred, regression_type='area'):
@@ -384,7 +414,7 @@ def get_metrics_regression(y_true, y_pred, regression_type='area'):
         results.loc['G', 'MSE'] = np.round(mse_global, 4)
         results.loc['G', 'L1'] = np.round(L1s_global, 4)
         results.loc['G', 'R2'] = np.round(r2_global, 4)
-    elif regression_type=='consistent':
+    elif regression_type == 'consistent':
         return None
 
     return results.T
@@ -409,7 +439,7 @@ def train_severity(model,
     best_epoch = 0
     history = {'train_loss': [], 'val_loss': [], 'train_metrics': [], 'val_metrics': [],
                'train_acc_G': [], 'val_acc_G': [], 'train_acc_RL': [], 'val_acc_RL': [], 'train_acc_LL': [], 'val_acc_LL': [],
-               'train_l1_acc': []} if regression_type == 'area' else {'train_loss': [], 'val_loss': [],'train_acc_G': [], 'val_acc_G': [],
+               'train_l1_acc': []} if regression_type == 'area' else {'train_loss': [], 'val_loss': [], 'train_acc_G': [], 'val_acc_G': [],
                                                                       'train_acc_RL': [], 'val_acc_RL': [], 'train_acc_LL': [], 'val_acc_LL': []}
 
     epochs_no_improve = 0
@@ -453,8 +483,6 @@ def train_severity(model,
                         labels = labels.type(torch.float32)
                         # REMEMBER LABELS/OUTPUT ORDER = [A, B, C, D, E, F, RL, LL, G]
 
-
-
                         # This criterion calculate MSE over single areas: (MEAN-SQUARED ERROR)
                         if regression_type == 'area':
                             labels_single_areas = labels[:, :6]
@@ -466,7 +494,6 @@ def train_severity(model,
                             loss = total_output['total_loss']
                             labels_predicted = total_output['labels_predicted']
                             probs_predicted = total_output['probs_predicted']
-
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -570,7 +597,7 @@ def train_MultiTask(model,
                     cfg,
                     num_epochs=25,
                     max_epochs_stop=3,
-                    regression_type='area'):
+                    save_model=True):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -729,15 +756,18 @@ def train_MultiTask(model,
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-
-    # Save model
-    torch.save(best_model_wts, os.path.join(model_dir, model_file_name + '.pt'))
-    print('-----------------------------------'
-          '\n Best Model-MultiTask Saved in: %s' % (os.path.join(model_dir, model_file_name)))
-    # Format history
+    if save_model:
+        # Save model
+        torch.save(best_model_wts, os.path.join(model_dir, model_file_name + '.pt'))
+        print('-----------------------------------'
+              '\n Best Model-MultiTask Saved in: %s' % (os.path.join(model_dir, model_file_name)))
+        # Format history
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
-    return model, history
+
+
+    return {'model': model, 'optimizer': optimizer, 'scheduler': scheduler, 'lr': optimizer.param_groups[0]['lr']}, history if 'curriculum' in cfg['trainer'].keys() else model, history
+
 
 
 def train_morbidity(model,
@@ -783,7 +813,6 @@ def train_morbidity(model,
                     inputs = outs[0]
                     labels = outs[1]
                     file_name = outs[2]
-
 
                     inputs = inputs.to(device)
                     labels = labels.to(device)
@@ -1327,7 +1356,6 @@ def rename(d, model_name):
 
 
 def load_resnet50(model_name, weights_dir='./weights'):
-
     path = os.path.join(weights_dir, f'{model_name}.pth.tar')
     state_dict = torch.load(path, map_location=torch.device('cpu'))
     print(f"state_dict={state_dict.keys()}")
@@ -1378,9 +1406,9 @@ class MorbidityModel(nn.Module):
         if 'squeezenet' in backbone:
             New_classification_Head = nn.Sequential(OrderedDict(
                 [
-                 ('dropout2', nn.Dropout(p=0.5, inplace=False)),
-                 ('classification-Head', nn.Conv2d(512, len(self.classes), kernel_size=(1, 1), stride=(1, 1)))
-                 ]
+                    ('dropout2', nn.Dropout(p=0.5, inplace=False)),
+                    ('classification-Head', nn.Conv2d(512, len(self.classes), kernel_size=(1, 1), stride=(1, 1)))
+                ]
             ))
         if 'resnet50_ChexPert' in backbone or 'resnet50_ChestX-ray14' in backbone or 'resnet50_ImageNet_ChestX-ray14' in backbone or 'resnet50_ImageNet_ChexPert' in backbone:
             state_dict = load_Chest_resnet_weights(chestXnet_model=backbone.split('resnet50_')[1])
@@ -1398,8 +1426,6 @@ class MorbidityModel(nn.Module):
 
             print('Loading pretrained model on ChestXNet, from: ', path_to_chestXnet_model)
             self.backbone.load_state_dict(adapted_dict, strict=False)
-
-
 
         # CHANGE HEAD
         for i, param in enumerate(list(New_classification_Head.parameters())):
@@ -1471,9 +1497,9 @@ class SeverityModel(nn.Module):
                  ('linear_global', nn.Linear(in_features=in_features, out_features=128))]))
             self.area_A_output = nn.Sequential(OrderedDict(
                 [
-                ('ReLU_A', nn.ReLU()),
-                 ('area_A',
-                  nn.Linear(in_features=128, out_features=4))]))
+                    ('ReLU_A', nn.ReLU()),
+                    ('area_A',
+                     nn.Linear(in_features=128, out_features=4))]))
             self.area_B_output = nn.Sequential(OrderedDict(
                 [('ReLU_B', nn.ReLU()),
                  ('area_B',
@@ -1481,23 +1507,23 @@ class SeverityModel(nn.Module):
             self.area_C_output = nn.Sequential(OrderedDict(
                 [
                     ('ReLU_C', nn.ReLU()),
-                 ('area_C',
-                  nn.Linear(in_features=128, out_features=4))]))
+                    ('area_C',
+                     nn.Linear(in_features=128, out_features=4))]))
             self.area_D_output = nn.Sequential(OrderedDict(
                 [
                     ('ReLU_D', nn.ReLU()),
-                 ('area_D',
-                  nn.Linear(in_features=128, out_features=4))]))
+                    ('area_D',
+                     nn.Linear(in_features=128, out_features=4))]))
             self.area_E_output = nn.Sequential(OrderedDict(
                 [
                     ('ReLU_E', nn.ReLU()),
-                 ('area_E',
-                  nn.Linear(in_features=128, out_features=4))]))
+                    ('area_E',
+                     nn.Linear(in_features=128, out_features=4))]))
             self.area_F_output = nn.Sequential(OrderedDict(
                 [
                     ('ReLU_F', nn.ReLU()),
-                 ('area_F',
-                  nn.Linear(in_features=128, out_features=4))]))
+                    ('area_F',
+                     nn.Linear(in_features=128, out_features=4))]))
 
             change_head(model=self.backbone, model_name=backbone, new_head=self.global_)
             for i, param in enumerate(list(self.backbone.parameters())):
@@ -1519,10 +1545,10 @@ class SeverityModel(nn.Module):
             change_head(model=self.backbone, model_name=backbone, new_head=New_classification_Head)
             for i, param in enumerate(list(New_classification_Head.parameters())):
                 param.requires_grad = True
-
+        """
         # (AIFORCOVID) MORBIDITY HEAD
         if False:
-            freeze_backbone(model=self, perc=0.5)
+            freeze_backbone(model=self, perc=0.5)"""
 
     def forward(self, x):
         if self.config['model']['structure'] == 'brixia':
@@ -1556,11 +1582,11 @@ def get_MultiTaskModel(kind='parallel', backbone='', cfg=None, device=None, *arg
         return SerialMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
 
 
-
 def MSE_loss(outputs, labels):
     number = (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) if (len(outputs) - len(labels[torch.all(torch.isnan(outputs), dim=1)])) != 0 else 1
 
     return torch.nansum((outputs - labels) ** 2) / number
+
 
 class BrixiaCustomLoss(torch.nn.Module):
     def __init__(self, cfg: dict, eps: float = 1e-08):
@@ -1569,7 +1595,7 @@ class BrixiaCustomLoss(torch.nn.Module):
         self.eps = eps
         self.alpha = cfg['trainer']['alpha']
         self.C = 4
-        self.one_hot = {0:[1,0,0,0], 1:[0,1,0,0], 2:[0,0,1,0], 3:[0,0,0,1]}
+        self.one_hot = {0: [1, 0, 0, 0], 1: [0, 1, 0, 0], 2: [0, 0, 1, 0], 3: [0, 0, 0, 1]}
         self.reverse_one_hot = {tuple(v): k for k, v in self.one_hot.items()}
 
     def get_one_hot(self, x):
@@ -1578,6 +1604,7 @@ class BrixiaCustomLoss(torch.nn.Module):
             one_hotted = self.one_hot[x[value].item()]
             output_tensor[value, :] = torch.Tensor(one_hotted)
         return output_tensor
+
     def forward(self, outputs, labels, **kwargs):
         # REMEMBER LABELS/OUTPUT ORDER = [A, B, C, D, E, F, RL, LL, G]
         labels_areas = labels[:, :6]
@@ -1588,7 +1615,6 @@ class BrixiaCustomLoss(torch.nn.Module):
 
         labels_predicted = torch.zeros_like(labels_areas)
         probs_predicted = torch.zeros_like(labels_areas)
-
 
         for s_area in range(labels_areas.shape[-1]):
 
@@ -1605,7 +1631,7 @@ class BrixiaCustomLoss(torch.nn.Module):
 
             factors = torch.zeros_like(out_S)
             for i in range(factors.shape[0]):
-                factors[i,:] = torch.Tensor([0,1,2,3])
+                factors[i, :] = torch.Tensor([0, 1, 2, 3])
             # Regression OUTPUT
             output_regressed = torch.mul(out_S, factors.to(outputs.device)).sum(dim=1)
             loss_total_regression += torch.mean(nn.L1Loss(reduction="none")(output_regressed.to(outputs.device), labels_score))
@@ -1615,18 +1641,17 @@ class BrixiaCustomLoss(torch.nn.Module):
         return {'total_loss': total_loss, 'labels_predicted': labels_predicted, 'probs_predicted': probs_predicted, 'regression_output': output_regressed}
 
 
-
-
 class IdentityMultiHeadLoss(torch.nn.Module):
     def __init__(self, cfg: dict, eps: float = 1e-08):
         super(IdentityMultiHeadLoss, self).__init__()
         self.cfg = cfg
         self.regression = self.cfg.model.regression_type
+        self.balancing = self.cfg.curriculum.steps[self.cfg.curriculum.step_running] / 100 if self.cfg.trainer.curriculum else 0.5
         self.loss_1 = cfg.trainer.loss_1
         self.loss_2 = cfg.trainer.loss_2
         self.encode_dataset = {'AFC': 0, 'BX': 1}
         self.dim_1 = 2
-        encode_bx_dim = {'area': 6, 'region': 3, 'global': 1}
+        encode_bx_dim = {'area': 6, 'region': 3, 'global': 1, 'consistent': 24}
         self.dim_2 = encode_bx_dim[self.regression]
 
     def get_brixia_mask(self, labels, dim=6):
@@ -1659,6 +1684,8 @@ class IdentityMultiHeadLoss(torch.nn.Module):
             return nn.BCELoss()
         elif name.upper() == 'CE':
             return nn.CrossEntropyLoss()
+        elif name.upper() == 'BRIXIA':
+            return BrixiaCustomLoss(cfg=self.cfg)
         else:
             raise NotImplementedError
 
@@ -1669,6 +1696,8 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         # Create a new vector with the labels that link each sample to the corresponding dataset
         labels_class = torch.Tensor(self.encode_batch(labels_class)).to(labels.device)
         BX_mask = self.get_brixia_mask(labels=labels_class, dim=self.dim_2).to(labels.device)
+        if self.cfg['model']['structure_bx'] == 'brixia':
+            BX_mask_output = BX_mask.view(BX_mask.shape[0], 6, 4)
         AFC_mask = self.get_aiforcovid_mask(labels=labels_class, dim=self.dim_1).to(labels.device)
 
         BX_selector = ~torch.any(BX_mask == 0, dim=1)
@@ -1680,10 +1709,12 @@ class IdentityMultiHeadLoss(torch.nn.Module):
 
         # Calculate the loss for each head
         loss_1 = Loss_AFC(outputs[0] * AFC_mask, labels[:, :self.dim_1] * AFC_mask)
-        loss_2 = Loss_BX(outputs[1] * BX_mask, labels[:, :self.dim_2] * BX_mask)
+
+        loss_2 = Loss_BX(outputs[1] * BX_mask_output, labels[:, :6] * BX_mask[:, :6])['total_loss'] if self.cfg['model']['structure_bx'] == 'brixia' else Loss_BX(outputs[1] * BX_mask,
+                                                                                                                                                                  labels[:, :6] * BX_mask)
 
         # Calculate the total loss
-        Loss_TOT = loss_1 + loss_2
+        Loss_TOT = (1 - self.balancing) * loss_1 + self.balancing * loss_2
         return {'Loss_TOT': Loss_TOT, 'Loss_M': loss_1, 'Loss_S': loss_2}, {'AFC_sel': AFC_selector, 'BX_sel': BX_selector}
 
 
@@ -1691,10 +1722,6 @@ def init_weights(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform(m.weight)
         m.bias.data.fill_(0.01)
-
-
-
-
 
 
 class ParallelMultiObjective(nn.Module):
@@ -1720,7 +1747,70 @@ class ParallelMultiObjective(nn.Module):
         # HEAD CLASSIFICATION : MORBIDITY
         # HEAD CLASSIFICATION : MORBIDITY
 
-        print('HEAD CLASSIFICATION :', self.config['model']['head'])
+        if cfg['model']['structure_bx'] == 'brixia':
+            self.global_ = nn.Sequential(OrderedDict(
+                [('dropout_global', nn.Dropout(p=0.5, inplace=False)),
+                 ('relu_global', nn.ReLU()),
+                 ('linear_global', nn.Linear(in_features=self.in_features, out_features=128))]))
+            self.area_A_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_A', nn.ReLU()),
+                    ('area_A',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_B_output = nn.Sequential(OrderedDict(
+                [('ReLU_B', nn.ReLU()),
+                 ('area_B',
+                  nn.Linear(in_features=128, out_features=4))]))
+            self.area_C_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_C', nn.ReLU()),
+                    ('area_C',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_D_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_D', nn.ReLU()),
+                    ('area_D',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_E_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_E', nn.ReLU()),
+                    ('area_E',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_F_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_F', nn.ReLU()),
+                    ('area_F',
+                     nn.Linear(in_features=128, out_features=4))]))
+
+            for i, param in enumerate(list(self.backbone.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_A_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_B_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_C_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_D_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_E_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_F_output.parameters())):
+                param.requires_grad = True
+        else:
+            print('HEAD CLASSIFICATION :', self.config['model']['head'])
+
+            self.Head_Severity = nn.Sequential(
+                OrderedDict([
+                    ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                    ('S_ReLU0', nn.ReLU()),
+                    ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
+                    ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                    ('S_ReLU1', nn.ReLU()),
+                    ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
+                    ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
+                ]))
+
+            init_weights(self.Head_Severity)
         self.Head_Morbidity = nn.Sequential(
             OrderedDict([
                 ('M_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
@@ -1731,42 +1821,7 @@ class ParallelMultiObjective(nn.Module):
                 ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
                 ('M_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_morbidity), bias=True))
             ]))
-        self.Head_Severity = nn.Sequential(
-            OrderedDict([
-                ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
-                ('S_ReLU0', nn.ReLU()),
-                ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
-                ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
-                ('S_ReLU1', nn.ReLU()),
-                ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
-                ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
-            ]))
-        """        elif self.config['model']['head'] == 'H2':
-            self.Head_Morbidity = nn.Sequential(
-                OrderedDict([
-
-                    ('M_linear0', nn.Linear(in_features=self.in_features, out_features=self.in_features)),
-                    ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
-                    ('M_linear1', nn.Linear(in_features=self.in_features, out_features=self.in_features, bias=True)),
-                    ('M_ReLU1', nn.ReLU()),
-                    ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
-                    ('M_classification-Head', nn.Linear(in_features=self.in_features, out_features=len(self.classes_morbidity), bias=True))
-                ]))
-            self.Head_Severity = nn.Sequential(
-                OrderedDict([
-
-                    ('S_linear0', nn.Linear(in_features=self.in_features, out_features=self.in_features)),
-                    ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
-                    ('S_linear1', nn.Linear(in_features=self.in_features, out_features=self.in_features, bias=True)),
-                    ('S_ReLU1', nn.ReLU()),
-                    ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
-
-                    ('S_classification-Head', nn.Linear(in_features=self.in_features, out_features=len(self.classes_severity), bias=True))
-                ]))
-        """
         init_weights(self.Head_Morbidity)
-        init_weights(self.Head_Severity)
-
         # Turn on the training of the gradients
         change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
 
@@ -1801,15 +1856,26 @@ class ParallelMultiObjective(nn.Module):
                 name_s = name_s.split('module.')[1]
             if name_m == name_s:
 
-
                 if name_m in this_model_params and name_s in this_model_params:
                     this_model_params[name_m].data.copy_((Beta * param_morbidity.data + (1 - Beta) * param_severity.data))
         self.load_state_dict(this_model_params, strict=False)
 
     def forward(self, x):
         x_hat = self.backbone(x)
+        if self.config['model']['structure_bx'] == 'brixia':
+            # Areas and Global scorer
+            out_global_memory = self.global_(x_hat)
+            out_area_A = self.area_A_output(out_global_memory)[:, None, :]
+            out_area_B = self.area_B_output(out_global_memory)[:, None, :]
+            out_area_C = self.area_C_output(out_global_memory)[:, None, :]
+            out_area_D = self.area_D_output(out_global_memory)[:, None, :]
+            out_area_E = self.area_E_output(out_global_memory)[:, None, :]
+            out_area_F = self.area_F_output(out_global_memory)[:, None, :]
+            out_severity = torch.cat((out_area_A, out_area_B, out_area_C, out_area_D, out_area_E, out_area_F), dim=1)
+        else:
+            out_severity = self.Head_Severity(x_hat)
         out_morbidity = self.softmax(self.Head_Morbidity(x_hat))
-        out_severity = self.Head_Severity(x_hat)
+
         return out_morbidity, out_severity
 
 
@@ -1833,12 +1899,12 @@ class SerialMultiObjective(nn.Module):
         self.backbone, self.in_features = get_backbone(backbone)
         self.drop_rate = self.config['model']['dropout_rate']
 
-
         # HEAD CLASSIFICATION : MORBIDITY
         print('HEAD CLASSIFICATION :', self.config['model']['head'])
+        input_features = 24 if cfg['model']['structure_bx'] == 'brixia' else len(self.classes_severity)
         self.Head_Morbidity = nn.Sequential(
             OrderedDict([
-                ('M_linear0', nn.Linear(in_features=len(self.classes_severity), out_features=32, bias=True)),
+                ('M_linear0', nn.Linear(in_features=input_features, out_features=32, bias=True)),
                 ('M_ReLU0', nn.ReLU()),
                 ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
                 ('M_linear1', nn.Linear(in_features=32, out_features=64, bias=True)),
@@ -1846,44 +1912,69 @@ class SerialMultiObjective(nn.Module):
                 ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
                 ('M_classification-Head', nn.Linear(in_features=64, out_features=len(self.classes_morbidity), bias=True))
             ]))
-        self.Head_Severity = nn.Sequential(
-            OrderedDict([
-                ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
-                ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
-                ('S_ReLU0', nn.ReLU()),
-                ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
-                ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
-                ('S_ReLU1', nn.ReLU()),
-                ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
-            ]))
-
-        # HEAD CLASSIFICATION : MORBIDITY
-        """           self.Head_Morbidity = nn.Sequential(
-            OrderedDict([
-                ('M_linear0', nn.Linear(in_features=self.in_features, out_features=self.in_features)),
-                ('M_Dropout0', nn.Dropout(p=self.drop_rate)),
-                ('M_linear1', nn.Linear(in_features=self.in_features, out_features=self.in_features, bias=True)),
-                ('M_ReLU1', nn.ReLU()),
-                ('M_Dropout1', nn.Dropout(p=self.drop_rate)),
-                ('M_classification-Head', nn.Linear(in_features=self.in_features, out_features=len(self.classes_morbidity), bias=True))
-            ]))
-        self.Head_Severity = nn.Sequential(
-            OrderedDict([
-                ('S_linear0', nn.Linear(in_features=self.in_features, out_features=self.in_features)),
-                ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
-                ('S_linear1', nn.Linear(in_features=self.in_features, out_features=self.in_features, bias=True)),
-                ('S_ReLU1', nn.ReLU()),
-                ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
-            ]))
-        self.Head_Severity_Classification = nn.Sequential(
-            OrderedDict([
-                ('S_classification-Head', nn.Linear(in_features=self.in_features, out_features=len(self.classes_severity), bias=True))
-            ]))
-        init_weights(self.Head_Severity_Classification)"""
         init_weights(self.Head_Morbidity)
-        init_weights(self.Head_Severity)
+        if cfg['model']['structure_bx'] == 'brixia':
+            self.global_ = nn.Sequential(OrderedDict(
+                [('dropout_global', nn.Dropout(p=0.5, inplace=False)),
+                 ('relu_global', nn.ReLU()),
+                 ('linear_global', nn.Linear(in_features=self.in_features, out_features=128))]))
+            self.area_A_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_A', nn.ReLU()),
+                    ('area_A',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_B_output = nn.Sequential(OrderedDict(
+                [('ReLU_B', nn.ReLU()),
+                 ('area_B',
+                  nn.Linear(in_features=128, out_features=4))]))
+            self.area_C_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_C', nn.ReLU()),
+                    ('area_C',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_D_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_D', nn.ReLU()),
+                    ('area_D',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_E_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_E', nn.ReLU()),
+                    ('area_E',
+                     nn.Linear(in_features=128, out_features=4))]))
+            self.area_F_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_F', nn.ReLU()),
+                    ('area_F',
+                     nn.Linear(in_features=128, out_features=4))]))
 
+            for i, param in enumerate(list(self.backbone.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_A_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_B_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_C_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_D_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_E_output.parameters())):
+                param.requires_grad = True
+            for i, param in enumerate(list(self.area_F_output.parameters())):
+                param.requires_grad = True
+        else:
+            self.Head_Severity = nn.Sequential(
+                OrderedDict([
+                    ('S_Dropout0', nn.Dropout(p=self.drop_rate)),
+                    ('S_linear0', nn.Linear(in_features=self.in_features, out_features=128, bias=True)),
+                    ('S_ReLU0', nn.ReLU()),
+                    ('S_Dropout1', nn.Dropout(p=self.drop_rate)),
+                    ('S_linear1', nn.Linear(in_features=128, out_features=32, bias=True)),
+                    ('S_ReLU1', nn.ReLU()),
+                    ('S_classification-Head', nn.Linear(in_features=32, out_features=len(self.classes_severity), bias=True))
+                ]))
 
+            init_weights(self.Head_Severity)
 
         # Turn on the training of the gradients
         change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
@@ -1915,20 +2006,25 @@ class SerialMultiObjective(nn.Module):
                 name_s = name_s.split('module.')[1]
             if name_m == name_s:
 
-
                 if name_m in this_model_params and name_s in this_model_params:
                     this_model_params[name_m].data.copy_((Beta * param_morbidity.data + (1 - Beta) * param_severity.data))
         self.load_state_dict(this_model_params, strict=False)
 
     def forward(self, x):
         x_hat = self.backbone(x)
-
-        """if self.config['model']['head'] == 'H2':
-            x_hat = self.Head_Severity(x_hat)
-            out_severity = self.Head_Severity_Classification(x_hat)
-            out_morbidity = self.softmax(self.Head_Morbidity(x_hat))"""
-
-        out_severity = self.Head_Severity(x_hat)
-        out_morbidity = self.softmax(self.Head_Morbidity(out_severity))
-
+        if self.config['model']['structure_bx'] == 'brixia':
+            # Areas and Global scorer
+            out_global_memory = self.global_(x_hat)
+            out_area_A = self.area_A_output(out_global_memory)[:, None, :]
+            out_area_B = self.area_B_output(out_global_memory)[:, None, :]
+            out_area_C = self.area_C_output(out_global_memory)[:, None, :]
+            out_area_D = self.area_D_output(out_global_memory)[:, None, :]
+            out_area_E = self.area_E_output(out_global_memory)[:, None, :]
+            out_area_F = self.area_F_output(out_global_memory)[:, None, :]
+            out_severity = torch.cat((out_area_A, out_area_B, out_area_C, out_area_D, out_area_E, out_area_F), dim=1)
+            input_morbidity = torch.flatten(out_severity, start_dim=1)
+            out_morbidity = self.softmax(self.Head_Morbidity(input_morbidity))
+        else:
+            out_severity = self.Head_Severity(x_hat)
+            out_morbidity = self.softmax(self.Head_Morbidity(out_severity))
         return out_morbidity, out_severity

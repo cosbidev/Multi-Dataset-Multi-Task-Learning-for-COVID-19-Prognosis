@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description="Configuration File")
 parser.add_argument("-e", "--experiment_config", help="Number of folder", type=str,
                     default='5')
 parser.add_argument("-k", "--modality_kind", help="Type of modality", type=str,
-                    choices=['morbidity', 'severity', 'multi'], default='morbidity')
+                    choices=['morbidity', 'severity', 'multi', 'multi_cl'], default='morbidity')
 
 parser.add_argument("--model_names", help="model_name", default=
 ["densenet121_CXR",
@@ -89,12 +89,20 @@ config_selector = {
             'S5': '../../configs/bash_experiments/experiment_setups_multitask_serial_5.json',
             'SL6': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_6.json',
             'SL18': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_18.json',
+        },
+    'multi_cl':
+        {
+            'P5': '../../configs/bash_experiments/experiment_setups_multitask_parallel_5.json',
+            'PL6': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_6.json',
+            'PL18': '../../configs/bash_experiments/experiment_setups_multitask_parallel_loCo_18.json',
+            'S5': '../../configs/bash_experiments/experiment_setups_multitask_serial_5.json',
+            'SL6': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_6.json',
+            'SL18': '../../configs/bash_experiments/experiment_setups_multitask_serial_loCo_18.json',
         }
 }
 
 if __name__ == "__main__":
 
-    # Load the experiment list
     file_config = config_selector[args.modality_kind][args.experiment_config]
     print(file_config)
     with open(file_config, 'r') as data_file:
@@ -106,8 +114,9 @@ if __name__ == "__main__":
 
     for i, exp_config in enumerate(experiment_list):
         # pick models
-        args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
-        if args.modality_kind == 'multi':
+
+
+        if args.modality_kind == 'multi' or args.modality_kind == 'multi_cl':
             args.model_names = ["densenet121_CXR",
                                 "densenet121",
                                 "densenet201",
@@ -130,15 +139,14 @@ if __name__ == "__main__":
                                 "wide_resnet50_2",
                                 ]
 
-
+        args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
 
         print('exp ', exp_config, 'models', args.model_names)
 
         for model in args.model_names:
 
             # Imposta la variabile d'ambiente con il dizionario
-            os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind,
-                                                                 exp_config['config_file'])
+            os.environ["config_dir"] = "configs/{}/{}/{}".format(str(exp_config['fold']), args.modality_kind if args.modality_kind != 'multi_cl' else 'multi',exp_config['config_file'])
             if args.checkpoint:
                 os.environ["checkpoint"] = "-c"
 
@@ -150,6 +158,9 @@ if __name__ == "__main__":
                   "fold", exp_config['fold'], "\n",
                   "config", exp_config['config_file'], "\n",
                   "checkpoint", args.checkpoint, "\n")
-            bash_file = {'severity': 'train_severity.sh', 'morbidity': 'train_morbidity.sh', 'multi': 'train_multi.sh'}
+            bash_file = {'severity': 'train_severity.sh',
+                         'morbidity': 'train_morbidity.sh',
+                         'multi': 'train_multi.sh',
+                         'multi_cl': 'train_multi_curriculum.sh'}
             launch_slurm_job(bash_file[args.modality_kind],
                              os.environ)
