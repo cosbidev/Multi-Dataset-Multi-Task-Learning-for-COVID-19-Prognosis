@@ -37,7 +37,7 @@ for model_name, param_count in sorted_models:
     print(f"{model_name}: {param_count} parameters")
     i += 1
     list_eff.append(model_name)
-    if i == 5:
+    if i == 8:
         break
 
 # Load each model and count parameters
@@ -57,6 +57,6 @@ for model_name, param_count in sorted_models:
     i += 1
     print(f"{model_name}: {param_count} parameters")
     list_vit.append(model_name)
-    if i == 3:
+    if i == 5:
         break
 pass

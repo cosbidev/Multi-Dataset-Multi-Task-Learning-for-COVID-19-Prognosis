@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
-#SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-1:00:00
+#SBATCH -N 1 --gpus-per-node=A100:1
+#SBATCH -t 0-00:10:00
 # Output files
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out

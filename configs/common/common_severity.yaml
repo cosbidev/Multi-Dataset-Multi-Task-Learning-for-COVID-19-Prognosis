@@ -23,4 +23,4 @@ trainer:
   early_stopping: 60 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300 # maximum number of epochs
   normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
-  batch_size: 64
+  batch_size: 64 # batch size

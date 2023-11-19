@@ -1,7 +1,7 @@
 import itertools
 from collections import OrderedDict
 
-#import timm
+import timm
 import torch
 import torch.nn as nn
 import numpy as np
@@ -201,7 +201,7 @@ def get_backbone(model_name=''):
         model = timm.create_model(model_name, pretrained=True)
         in_features = model.classifier.in_features
     elif "vit" in model_name:
-        model = timm.create_model(model_name, pretrained=True)
+        model = timm.create_model(model_name, pretrained=False)
         in_features = model.head.in_features
     else:
         raise ValueError("Invalid model name")
@@ -599,7 +599,7 @@ def train_MultiTask(model,
                     max_epochs_stop=3,
                     save_model=True):
     since = time.time()
-
+    print('Noise added to the model')
     best_model_wts = copy.deepcopy(model.state_dict())
     best_epoch_accuracy = 0.0
     best_loss = 1e6
@@ -612,7 +612,6 @@ def train_MultiTask(model,
                'val_loss_M': [],
                'train_acc': [],
                'val_acc': []}
-
     epochs_no_improve = 0
     early_stop = False
     for epoch in range(num_epochs):
@@ -732,10 +731,10 @@ def train_MultiTask(model,
             # deep copy the model
             if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
-                    if epoch_loss_tot < best_loss:
+                    if epoch_loss_AFC < best_loss:
                         best_epoch = epoch
                         best_epoch_accuracy = epoch_acc
-                        best_loss = epoch_loss_tot
+                        best_loss = epoch_loss_AFC
                         best_model_wts = copy.deepcopy(model.state_dict())
                         epochs_no_improve = 0
                     else:
@@ -766,7 +765,7 @@ def train_MultiTask(model,
 
 
 
-    return {'model': model, 'optimizer': optimizer, 'scheduler': scheduler, 'lr': optimizer.param_groups[0]['lr']}, history if 'curriculum' in cfg['trainer'].keys() else model, history
+    return model, history, {'best_loss': best_loss, 'best_acc': best_epoch_accuracy, 'best_epoch': best_epoch}
 
 
 
@@ -897,6 +896,7 @@ def train_morbidity(model,
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
     return model, history
+
 
 
 def get_lr(optimizer):
@@ -1169,6 +1169,8 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
                          'LR_pred': output_predictions[:, :3].sum(1),
                          'LL_pred': output_predictions[:, :3].sum(1),
                          'G_pred': output_predictions[:, :].sum(1)}
+
+
         results_metrics_resume = {
             'Accuracy L1': accuracy_distance_l1,
             'Accuracy Exp': accuracy_distance_exp,
@@ -1186,6 +1188,7 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
             'Acc_E': acc_all_['acc_e'],
             'Acc_F': acc_all_['acc_f'],
         }
+
     # Lets save each zone with a name
     labels = {key.split('_')[0] + 'y': list() for key in results_float.keys()}
     for row in range(real_target.shape[0]):
@@ -1646,7 +1649,6 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         super(IdentityMultiHeadLoss, self).__init__()
         self.cfg = cfg
         self.regression = self.cfg.model.regression_type
-        self.balancing = self.cfg.curriculum.steps[self.cfg.curriculum.step_running] / 100 if self.cfg.trainer.curriculum else 0.5
         self.loss_1 = cfg.trainer.loss_1
         self.loss_2 = cfg.trainer.loss_2
         self.encode_dataset = {'AFC': 0, 'BX': 1}
@@ -1679,11 +1681,11 @@ class IdentityMultiHeadLoss(torch.nn.Module):
 
     def get_loss(self, name):
         if name.upper() == 'MSE':
-            return nn.MSELoss()
+            return nn.MSELoss(reduction='sum')
         elif name.upper() == 'BCE':
-            return nn.BCELoss()
+            return nn.BCELoss(reduction='sum')
         elif name.upper() == 'CE':
-            return nn.CrossEntropyLoss()
+            return nn.CrossEntropyLoss(reduction='sum')
         elif name.upper() == 'BRIXIA':
             return BrixiaCustomLoss(cfg=self.cfg)
         else:
@@ -1712,16 +1714,25 @@ class IdentityMultiHeadLoss(torch.nn.Module):
 
         loss_2 = Loss_BX(outputs[1] * BX_mask_output, labels[:, :6] * BX_mask[:, :6])['total_loss'] if self.cfg['model']['structure_bx'] == 'brixia' else Loss_BX(outputs[1] * BX_mask,
                                                                                                                                                                   labels[:, :6] * BX_mask)
-
+        number_AFC = torch.count_nonzero(AFC_selector) if torch.count_nonzero(AFC_selector).item() != 0 else 1
+        number_BX = torch.count_nonzero(BX_selector) if torch.count_nonzero(BX_selector).item() != 0 else 1
         # Calculate the total loss
-        Loss_TOT = (1 - self.balancing) * loss_1 + self.balancing * loss_2
+        Loss_TOT =  torch.div(loss_1, number_AFC)  +  torch.mul(torch.div(loss_2, number_BX), 1/5)
         return {'Loss_TOT': Loss_TOT, 'Loss_M': loss_1, 'Loss_S': loss_2}, {'AFC_sel': AFC_selector, 'BX_sel': BX_selector}
+
 
 
 def init_weights(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform(m.weight)
         m.bias.data.fill_(0.01)
+
+def add_noise_to_weights(m):
+    with torch.no_grad():
+        if hasattr(m, 'weight'):
+            device = m.weight.device
+            noise = torch.randn(m.weight.size(), device=device) * 0.03
+            m.weight.add_(noise)
 
 
 class ParallelMultiObjective(nn.Module):
@@ -1732,7 +1743,6 @@ class ParallelMultiObjective(nn.Module):
 
         self.cfg_morbidity = cfg['data']['modes']['morbidity']
         self.cfg_severity = cfg['data']['modes']['severity']
-
         self.classes_morbidity = self.cfg_morbidity['classes']
         self.classes_severity = self.cfg_severity['classes']
 

@@ -1,5 +1,8 @@
 import os
 import random
+import warnings
+from multiprocessing.pool import ThreadPool
+
 import cv2
 import imutils
 import numpy as np
@@ -352,6 +355,7 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
         img = get_mask(img, mask)
         min_val, max_val = img.min(), img.max()
 
+
     if kwargs['normalization_mode'] == 'MinMax':
         img = normalize(img, min_val=min_val, max_val=max_val)
     if bbox_resize:
@@ -360,12 +364,12 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
             img = get_box(img=img, box_=box_tot, masked=masked, **kwargs)
         except IndexError:
             img = img
+
     # To Grayscale
     if img.ndim > 2:
         img = img.mean(axis=2)
 
     # Resize
-
 
     img = cv2.resize(img, (img_dim, img_dim))
 
@@ -383,11 +387,29 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
 class CustomSampler(Sampler):
     def __init__(self, dataset1, dataset2, ratio, batch_size):
 
+        # Datasets loading:
+        # dataset1: dataset with more samples guiding the sampling
+        # dataset2: to fill the remaining samples
+        # Once the first dataset has been iterated the sampler job is completed
         self.dataset1 = dataset1
         self.dataset2 = dataset2
-        self.ratio_d1 = ratio
+        # Length of the dataset
+        self.len_dataset1 = len(dataset1)
+        self.len_dataset2 = len(dataset2)
 
+
+        # Ratio first dataset
+        self.ratio_d1 = ratio
+        # Batch size
         self.batch_size = batch_size
+
+        # Given dataset1 length
+        self.max_batches = self.len_dataset1 // int(batch_size * ratio)
+        self.max_batches = int(self.max_batches)
+        # Indices
+        self.indices1 = np.arange(len(dataset1))
+        self.indices2 = np.arange(len(dataset2)) + len(dataset1) # To avoid overlapping indices
+
 
         self.num_samples_dataset1 = int(batch_size * self.ratio_d1)
         self.num_samples_dataset2 = batch_size - self.num_samples_dataset1
@@ -400,8 +422,6 @@ class CustomSampler(Sampler):
 
         self.current_idx1 = 0
         self.current_idx2 = 0
-
-        self.max_batches = (len(dataset1) + len(dataset2)) // batch_size
     def __iter__(self):
         batch = []
         batch_count = 0
@@ -466,6 +486,18 @@ class BaseDataset(torch.utils.data.Dataset):
     def set_normalize_strategy(self, normalize_strategy):
         self.normalize_strategy = normalize_strategy
 
+    def _load_cache_item(self, idx: int):
+        """
+        Args:
+            idx: the index of the input data sequence.
+        """
+        row = self.data.iloc[idx]
+        # Map each element using the line_mapper
+        id_ = str(row.img)
+        x = self.load_single_image(id_)
+        return {str(id_): x}
+
+
     def load_single_image(self, id_):
         id_ = str(id_)
         if self.masks:
@@ -482,14 +514,27 @@ class BaseDataset(torch.utils.data.Dataset):
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, step=self.step, normalization_mode = self.normalize_strategy, **self.cfg['preprocess'])
         return x
 
-    def load_images(self):
-        c = CustomIterableDataset(self.data, self)
+    def load_images(self, progress=True, has_tqdm=True, num_workers=12):
+        """c = CustomIterableDataset(self.data, self)
         loader_ = torch.utils.data.DataLoader(c, batch_size=32, num_workers=6)
         for output in tqdm(loader_):
             ids = output[0]
             x = output[1]
             for id, img in zip(ids, x):
                 self.images[id] = img.cpu().numpy()
+        del loader"""
+
+        indices = self.data.index.tolist()
+
+        if progress and not has_tqdm:
+            warnings.warn("tqdm is not installed, will not show the caching progress bar.")
+        with ThreadPool(num_workers) as p:
+            if progress and has_tqdm:
+                return list(tqdm(p.imap(self._load_cache_item, indices), total=len(indices), desc="Loading dataset"))
+            return list(p.imap(self._load_cache_item, indices))
+
+
+
 
     def shuffle(self):
         self.data = self.data.sample(frac=1).reset_index(drop=True)
@@ -519,6 +564,7 @@ class BaseDataset(torch.utils.data.Dataset):
         if self.step == "train":
             x = augmentation(x)
 
+
         # 3 channels
         x = np.stack((x,) * 3, axis=2)
 
@@ -529,6 +575,7 @@ class BaseDataset(torch.utils.data.Dataset):
         # Normalize
         x = normalize_XRay(torch.Tensor(x.reshape(3, self.img_dim, self.img_dim))) if self.normalize_strategy == 'Imagenet' else torch.Tensor(x.reshape(
             3, self.img_dim, self.img_dim))
+
         if 'dataset_class' not in row.index:
             return x, y, Id_, 'NO_CLASS'
         else:
@@ -569,7 +616,11 @@ class DatasetImgAFC(BaseDataset):
             self.shuffle()
             # Processing and Loading of images in memory
 
-            self.load_images()
+            self.images = {}
+
+            for single_dict in self.load_images():
+                self.images.update(single_dict)
+
 
 
     def process_morbidity(self, cfg, data, classes):
@@ -697,7 +748,10 @@ class DatasetImgBX(BaseDataset):
             self.data, self.brixia_score, self.masks, self.boxes, self.box_R, self.box_L, self.img_paths = self.process_severity(self.cfg, data, classes)
             self.shuffle()
             # Processing and Loading of images in memory
-            self.load_images()
+
+            self.images = {}
+            for single_dict in self.load_images():
+                self.images.update(single_dict)
 
     def process_severity(self, cfg, data, classes):
         self.drop_patient(patient_ids=['1773596264454332092'], data=data)
@@ -822,7 +876,12 @@ class MultiTaskDataset(DatasetImgBX, DatasetImgAFC):
         self.box_R = {**self.__m_box_R, **self.__s_box_R}
         self.box_L = {**self.__m_box_L, **self.__s_box_L}
         self.img_paths = {**self.__m_img_paths, **self.__s_img_paths}
-        self.load_images()
+
+
+        self.images = {}
+
+        for single_dict in self.load_images():
+            self.images.update(single_dict)
 
     def load_single_image(self, id_):
         id_ = str(id_)

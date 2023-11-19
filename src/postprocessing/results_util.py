@@ -15,13 +15,15 @@ def transform_number(num):
     return transformed_num
 def load_experiments_results(paths: list, experiments: list, setups_cv: list, image_types: list, head_modes: list, metrics: list, models_names: list):
     path = paths[0]
-
+    all_list = {}
     mapper_cv = {'CV5': '5', 'LoCo': 'loCo'}
     resulting_all = pd.DataFrame()
-    list_all = []
+    list_all_model_missing = {}
     data = []
     # Experiments directory:
     for experiment in experiments:
+
+        model_list = []
         if "BASELINE" in experiment:
             # AiForCovid directory BASELINE
             name_dir = 'AFC'
@@ -30,7 +32,7 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
             old_name = experiment
             experiment_new = mapper_exp_run_name[experiment]
             # Name Mapping for the cv strategy
-            mapper_cv = {'CV5': '5', 'LoCo': 'loCo'}
+            mapper_cv = {'CV5': '5', 'loCo': 'loCo'}
             inverse_mapper_cv  =  {v: k for k, v in mapper_cv.items()}
             # No Head for Baseline
             head_modes_selection = ['']
@@ -40,11 +42,15 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
             # MultiTask-Objective directory
             name_dir = 'Multi'
             path_exp = os.path.join(path, name_dir)
-            mapper_cv = {'CV5': '5', 'LoCo': 'loCo6'}
+            mapper_cv = {'CV5': '5', 'loCo': 'loCo6'}
             inverse_mapper_cv  = {v: k for k, v in mapper_cv.items()}
             head_modes_selection = head_modes.copy()
             head_modes_selection.remove('baseline')
-            mapper_exp_run_name = {'BINA_h1': 'BINA_h1', 'BINA_BX': 'BINA_BX', 'Curriculum_BINA_CL': 'Curriculum_BINA_CL'}
+            mapper_exp_run_name = {'BINA_h1': 'BINA_h1',
+                                   'BINA_BX': 'BINA_BX',
+                                   'Curriculum_BINA_CL': 'Curriculum_BINA_CL',
+                                   'Curriculum_BINA_CL_noise0.3': 'Curriculum_BINA_CL_noise0.3',
+                                   'Curriculum_BINA_adaptive-2': 'Curriculum_BINA_adaptive-2'}
             old_name = experiment
             experiment_new = mapper_exp_run_name[experiment]
         for setup_cv in setups_cv:
@@ -60,7 +66,7 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
             for head_ in head_modes_selection:
                 # Define Pattern
                 if head_:
-                    pattern = rf'({re.escape(head_)}).*?({re.escape(experiment_new)})'
+                    pattern = rf'({re.escape(head_)}).*?({re.escape(experiment_new)})$'
                 else:
                     pattern = rf'({re.escape(experiment_new)})'
 
@@ -82,21 +88,23 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
                             if match_T:
                                 path_exp_cv_images = os.path.join(path_exp_cv, image_T_exp)
 
-                                pattern_report = r'.*Morbidity.*\.xlsx$' if not "BASELINE" in old_name else r'models_report.*\.xlsx$'
+                                pattern_report = r'.*Morbidity.*\.csv'
 
                                 file_catcher = [filename for filename in os.listdir(os.path.join(path_exp_cv_images, 'all')) if re.search(pattern_report,
-                                                                                                                                          filename)]
+                                                                                                                        filename)]
+                                print(experiment)
                                 if len(file_catcher) == 0:
                                     continue
                                 else:
-                                    all_report = pd.read_excel(
+                                    all_report = pd.read_csv(
                                         os.path.join(path_exp_cv_images, 'all', file_catcher[0])).set_index('Unnamed: 0')
-
+                                    all_list[experiment_new + '_' + setup_cv + '_' + 'head' + '_' + image_type] = all_report
                                     for model in models_names:
                                         if model in all_report.index:
-
                                             model_row = all_report.loc[model, :]
+
                                         else:
+                                            model_list.append(model)
                                             continue
                                         for measure in ['mean', 'std']:
 
@@ -114,6 +122,7 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
                                                 data.append({'Image Type': image_type, 'Model': model, 'Experiment': experiment_new_local,
                                                              'Category': measure, 'Cross Val Strategy': inverse_mapper_cv[setup_cv],
                                                              'Head Mode': head_local, 'Value': measure_row_metric, 'Metric': metric})
+                                    list_all_model_missing[experiment + '_' + image_type + '_' + experiment_new_local + '_' + inverse_mapper_cv[setup_cv] + '_' + head_local] = model_list
 
     return pd.DataFrame(data)
 

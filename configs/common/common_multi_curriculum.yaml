@@ -3,7 +3,7 @@ model:
   model_name: multi
   task: multitask_curriculum
   head: H1 # head of the model (H1, H2, H3)
-  pretrained: ["BINA", "BINA"] # if this parameter is None, the model is trained from scratch
+  pretrained: ["BINA", "BINA_BX2"] # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.50 # dropout rate
   regression_type: area # consistent or area
   softmax: True # if True, the output is a probability distribution over the classes
@@ -13,20 +13,20 @@ model:
 
 trainer:
   alpha: 0.7 # weight of the severity loss, 0.0 only consistency loss, 1.0 only sparsity BCE loss
-  loss_1: bce # loss function AFC
+  loss_1: mse # loss function AFC
   loss_2: mse # loss function BX
   warmup_epochs: 30 # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
   optimizer:
-    lr: 0.005 # initial learning rate
-    weight_decay: 0.00001 # weight decay
+    lr: 0.004 # initial learning rate
+    weight_decay: 0.0001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min
-    patience: 25 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+    patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-8
-    factor: 0.60 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 20 # if the validation loss do not improve for x epochs stop training
+    factor: 0.70 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 30 # if the validation loss do not improve for x epochs stop training
   normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
-  batch_size: 128
+  batch_size: 16
   curriculum: False # if True, the curriculum is used
 curriculum:
 
@@ -37,5 +37,5 @@ curriculum:
     - 60
     - 80
     - 100
-  epochs: 80 # number of epochs for each step
+  epochs: 200 # number of epochs for each step
   name: curriculum_multitask # name of the curriculum

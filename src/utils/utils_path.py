@@ -15,7 +15,6 @@ SPACE_PREFIX = "    "
 # Directory Tree Printer / Organizer
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
 def files_in_folder(folder, extension='dicom', sort=False):
     """
     This function returns the list of files in a folder, with a specific extension and sorted.

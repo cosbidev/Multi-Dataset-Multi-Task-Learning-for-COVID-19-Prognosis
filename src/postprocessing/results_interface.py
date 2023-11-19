@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from src.postprocessing.results_util import load_experiments_results
 
 sys.path.append(os.getcwd())
-sys.path.append(os.path.join(os.getcwd(), "CMC_utils"))
 
 # Sample data
 np.random.seed(42)
@@ -30,17 +29,20 @@ base_models = ["densenet121_CXR",
                "shufflenet_v2_x0_5",
                "shufflenet_v2_x1_0",
                "wide_resnet50_2",
+               "densenet161",
+               "densenet169",
+               "densenet201",
                ]
 
 metrics = ['Accuracy', 'F1_score',  'Accuracy-Severe', 'Accuracy-Mild']
 models = base_models
-experiments = ['BINA_h1', 'BINA_BX',  'BASELINE_BINA', 'Curriculum_BINA_CL'] # 'BINA_BX_cl',
+experiments = ['BINA_h1', 'BASELINE_BINA', 'Curriculum_BINA_adaptive-2']  # 'BINA_BX_cl',
 categories = ['mean', 'std']
-cross_val_strategies = ['CV5', 'LoCo']
+cross_val_strategies = ['CV5', 'loCo']
 head_modes = ['parallel', 'serial', 'baseline']
 
 
-df = load_experiments_results(['reports'], experiments=experiments, setups_cv=['CV5', 'LoCo'], image_types=['Entire', 'LungMask'], head_modes=['parallel', 'serial', 'baseline'] ,
+df = load_experiments_results(['reports'], experiments=experiments, setups_cv=['CV5', 'loCo'], image_types=['Entire', 'LungMask'], head_modes=['parallel', 'serial', 'baseline'] ,
                               metrics=['F1_score', 'Accuracy', 'Accuracy-Severe', 'Accuracy-Mild'], models_names=base_models)
 
 
@@ -189,9 +191,11 @@ def update_bar_plot(selected_image_type, selected_models, selected_experiment, s
                      (df['Cross Val Strategy'] == selected_cross_val_strategy) &
                      (df['Head Mode'] == selected_head_mode) &
                      (df['Metric'] == selected_metric)]
+    if selected_experiment == "BASELINE_BINA":
+        selected_head_mode = "baseline"
     fig = px.bar(filtered_df, x='Model', y='Value', color='Model', hover_data=['Value'],
                  title=f'Bar Plot for {selected_experiment} ({selected_category}) - {selected_cross_val_strategy} - {selected_head_mode}',
-    )
+        )
 
     # Update text font size inside bars
     fig.update_traces(textfont_size=25)
@@ -286,4 +290,4 @@ def update_scatter_plot(selected_image_type, selected_category, selected_cross_v
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)

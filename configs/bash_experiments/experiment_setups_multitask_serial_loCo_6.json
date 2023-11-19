@@ -3,13 +3,7 @@
     "config_file" : "serial_config_multitask_loCo6.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "['densenet161', 'densenet121']"
-
-  },
-  {
-    "config_file" : "serial_config_multitask_Masked_loCo6.yaml",
-    "name" : "loCo",
-    "fold" : "loCo",
-    "models": "['densenet161']"
+    "models": "all"
   }
+
 ]

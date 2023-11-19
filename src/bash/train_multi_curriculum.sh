@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2023-5-274  -p alvis
 #SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-13:00:00
+#SBATCH -t 0-17:00:00
 # Output files
 
 

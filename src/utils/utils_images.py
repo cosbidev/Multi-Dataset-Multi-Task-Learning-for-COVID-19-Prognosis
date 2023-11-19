@@ -11,7 +11,6 @@ from skimage.exposure import equalize_adapthist
 from .utils_path import files_in_folder
 
 
-
 def find_max_left_right(bboxes):
     # This function extract the two biggest boxes
     areas = [elem[1] for elem in bboxes]

@@ -139,8 +139,36 @@ if __name__ == "__main__":
                                 "wide_resnet50_2",
                                 ]
 
-        args.model_names = eval(exp_config['models']) if exp_config['models'] != 'all' else args.model_names
+        if exp_config['models'] == 'vit-eff':
+            args.model_names = [
+                                'vit_medium_patch16_gap_256',
+                                'vit_medium_patch16_reg4_gap_256',
+                                'vit_medium_patch16_reg4_256']
+            """
+            'efficientnet_lite0',
+            'efficientnet_b0',
+            'efficientnet_b0_gn',
+            'efficientnet_lite1',
+            'efficientnet_es',
+            ['efficientnet_lite0',
+             'efficientnet_b0',
+             'efficientnet_b0_gn',
+             'efficientnet_lite1',
+             'efficientnet_es',
+             'efficientnet_es_pruned',
+             'efficientnet_lite2',
+             'efficientnet_b1_pruned',
+             'vit_medium_patch16_gap_256',
+             'vit_medium_patch16_reg4_gap_256',
+             'vit_medium_patch16_reg4_256',
+             'vit_base_patch16_reg8_gap_256',
+             'vit_base_patch16_siglip_256']
+            """
+        elif exp_config['models'] == 'all':
+            args.model_names = args.model_names
 
+        else:
+            args.model_names = eval(exp_config['models'])
         print('exp ', exp_config, 'models', args.model_names)
 
         for model in args.model_names:

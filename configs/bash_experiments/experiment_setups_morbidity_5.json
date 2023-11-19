@@ -3,13 +3,13 @@
     "config_file" : "afc_config_singletask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['densenet161', 'densenet201']"
+    "models": "vit-eff"
 
   },
   {
     "config_file" : "afc_config_singletask_Masked_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['densenet161', 'densenet201', 'densenet169', 'resnet101']"
+    "models": "vit-eff"
   }
 ]

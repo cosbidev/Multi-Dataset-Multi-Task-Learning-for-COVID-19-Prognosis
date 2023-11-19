@@ -27,3 +27,4 @@ trainer:
   max_epochs: 300 # maximum number of epochs
   normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
   batch_size: 64
+
