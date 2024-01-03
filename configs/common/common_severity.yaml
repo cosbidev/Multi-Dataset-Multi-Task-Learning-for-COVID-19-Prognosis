@@ -1,26 +1,31 @@
 
-
+root: /mimer/NOBACKUP/groups/naiss2023-6-336/fruffini/COVID-19-MultiTask
 model:
+
   model_name: single
   task: severity
   pretrained: null # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.50
-  regression_type: consistent # consistent or area
+  regression_type: area # consistent or area
   freezing: False
-  structure: brixia
+  structure: '' # brixia_Global or brixia_Lung
+  encoding: threshold # threshold or mean (with rounding)
+
 trainer:
   alpha: 0.7 # weight of the severity loss, 0.0 only consistency loss, 1.0 only sparsity BCE loss
-  loss: brixia # loss function
+  loss: mse # loss function
   warmup_epochs: 40  # number of epochs to warm up the model, if 0 the model the optimization starts from the first epoch
   optimizer:
-    lr: 0.003 # initial learning rate
+    lr: 0.001 # initial learning rate
     weight_decay: 0.00001 # weight decay
   scheduler: # allow to change learning rate during training
     mode: min # min or max
-    patience: 10 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+    patience: 15 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
     min_lr: 1e-8
-    factor: 0.75 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
-  early_stopping: 60 # if the validation loss do not improve for x epochs stop training
+    factor: 0.65 # if the validation loss do not improve for x epochs, the scheduler reduces the learning rate (lr*10^-1)
+  early_stopping: 65 # if the validation loss do not improve for x epochs stop training
   max_epochs: 300 # maximum number of epochs
   normalizer: ImageNet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
-  batch_size: 64 # batch size
+  batch_size: 128 # batch size
+
+

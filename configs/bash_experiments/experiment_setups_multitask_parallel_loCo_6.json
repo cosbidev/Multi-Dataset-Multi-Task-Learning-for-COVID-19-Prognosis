@@ -3,12 +3,25 @@
     "config_file" : "parallel_config_multitask_loCo6.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "all"
+    "models": "diff",
+    "structure": "brixia_Lung",
+    "release": 1
   },
-    {
-    "config_file" : "parallel_config_multitask_Masked_loCo6.yaml",
+  {
+    "config_file" : "parallel_config_multitask_loCo6.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "all"
+    "models": "diff",
+    "structure": "brixia_Global",
+    "release": 1
+  },
+
+  {
+    "config_file" : "parallel_config_multitask_loCo6.yaml",
+    "name" : "loCo",
+    "fold" : "loCo",
+    "models": "diff",
+    "structure": "regression",
+    "release": 1
   }
 ]

@@ -1,10 +1,12 @@
+root: /mimer/NOBACKUP/groups/naiss2023-6-336/fruffini/COVID-19-MultiTask
+
 model:
   freezing: False
   model_name: single
   task: morbidity
   pretrained: False # if this parameter is None, the model is trained from scratch
   dropout_rate: 0.5
-  softmax: True # if True, the output is a probability distribution over the classes
+  softmax: False # if True, the output is a probability distribution over the classes
 
 trainer:
   loss: bce # loss function
@@ -21,4 +23,6 @@ trainer:
   max_epochs: 300
   normalizer: Imagenet # normalization of the input images (Imagenet, Standardizer, MinMax, None)
   batch_size: 128
+
+
 

@@ -26,8 +26,10 @@ def main():
     parser = argparse.ArgumentParser(description="Configuration File")
     parser.add_argument("--cfg_file", help="Number of folder", type=str)
     parser.add_argument("--model_name", help="model_name")
+    parser.add_argument("--structure", help="structure of the BX module")
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
     parser.add_argument("--id_exp", help="seed", default=1)
+
     parser.add_argument("--checkpointer", "-c", help="seed", action='store_true')
     args = parser.parse_args()
 
@@ -42,6 +44,14 @@ def main():
     del cfg_common
     # Seed everything
     seed_all(cfg['seed'])
+    cfg['model']['structure'] = args.structure
+    if args.structure == 'brixia_Lung' or args.structure == 'brixia_Global':
+        cfg['model']['regression_type'] = 'consistent'
+        cfg['trainer']['loss'] = 'brixia'
+    else:
+        cfg['model']['regression_type'] = 'area'
+        cfg['trainer']['loss'] = 'mse'
+
 
     # Parameters
     batch_size = cfg['trainer']['batch_size']
@@ -98,19 +108,30 @@ def main():
     print('12) Clahe :', 'Applied' if data_cfg['preprocess']['clahe'] else 'Not applied')
     print('13) Filter :', 'Applied' if data_cfg['preprocess']['filter'] else 'Not applied')
     print('14) Clip :', 'Applied' if data_cfg['preprocess']['clip'] else 'Not applied')
+    print('15) Brixia structure :', cfg['model']['structure'])
     print(''.center(60, '-') + '\n')
 
     # Directories
-    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}'
+
+    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}' + f'_{args.structure}'
     cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
 
-    model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)  # folder to save model
+
+    # Create directories
+
+    model_dir = os.path.join(os.path.join(cfg['root'] if not is_debug() else '.', cfg['data']['model_dir']),
+                             exp_name,
+                             model_name)  # folder to save model
     print(' ----------| Model directory: ', model_dir)
     if os.path.exists(model_dir) and not args.checkpointer:
         shutil.rmtree(model_dir)
     mkdir(model_dir)
-    report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name)  # folder to save results
+
+
+    report_dir = os.path.join(cfg['data']['report_dir'] if (cfg['root'] == '.' or is_debug()) else os.path.join(cfg['root'],cfg['data']['report_dir']),
+                             exp_name,
+                             model_name)
     print(' ----------| Report directory: ', report_dir)
     if os.path.exists(report_dir) and not args.checkpointer:
         shutil.rmtree(report_dir)
@@ -125,12 +146,17 @@ def main():
     mkdir(plot_training_dir)
     # REPORT FINAL:
     # 1) VALIDATION
-    final_results_val = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
-                                              'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+    final_results_val = pd.DataFrame(columns=['Accuracy_LL', 'Precision_LL', 'Recall_LL', 'F1 Score_LL', 'Accuracy_RR', 'Precision_RR', 'Recall_RR', 'F1 Score_RR'])
 
     # 2) TEST
-    final_results_test = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
-                                               'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+    if cfg['model']['structure'] == 'brixia_Lung':
+        final_results_test = pd.DataFrame(columns=['Accuracy_LL', 'Precision_LL', 'Recall_LL', 'F1 Score_LL', 'Accuracy_RR', 'Precision_RR', 'Recall_RR', 'F1 Score_RR'])
+    elif cfg['model']['structure'] == 'brixia_Global':
+        final_results_test = pd.DataFrame(columns=['Accuracy_G', 'Precision_G', 'Recall_G', 'F1 Score_G'])
+    else:
+        final_results_test = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
+                                                   'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+
     # ------------------- FOLD ITERATION -------------------
     for fold in fold_list:
         string_fold = '-----------| Fold ' + str(fold) + ' |----------'
@@ -158,17 +184,18 @@ def main():
 
         if is_debug():
             pass
-            fold_data['train'] = fold_data['train'][2100:2230]
+            fold_data['train'] = fold_data['train'][::10]
             if fold != 2:
-                fold_data['val'] = fold_data['val'][50:190]
-            fold_data['val'] = fold_data['val'][50:190]
-            fold_data['test'] = fold_data['test'][390:520]
+                fold_data['val'] = fold_data['val'][::5]
+            fold_data['val'] = fold_data['val'][::4]
+            fold_data['test'] = fold_data['test'][::4]
         # ------------------- MODEL -------------------
         model = get_SingleTaskModel(backbone=model_name, cfg=cfg, device=device)
         n_gpus = torch.cuda.device_count()
         if torch.cuda.device_count() > 1:
             print("Let's use", n_gpus, "GPUs!")
             model = nn.DataParallel(model, list(range(n_gpus)))
+
 
         # ------------------- DATA -------------------
         datasets = {
@@ -188,10 +215,11 @@ def main():
         model_trained = False
         print('Checkpointer: ', args.checkpointer)
         if args.checkpointer:
-            experiment_directory = os.path.join(*model_fold_dir.split('/')[:-3], f'*{"_LungMask" if data_cfg["preprocess"]["masked"] else "_Entire"}*')
+            experiment_directory = os.path.join('/',*model_fold_dir.split('/')[:-3], f'*{"_LungMask" if data_cfg["preprocess"]["masked"] else "_Entire"}*')
             model_fold_dir = os.path.join(glob.glob(experiment_directory)[0], model_name, str(fold))
+            print('model_fold_dir', model_fold_dir)
             name_model_file = os.listdir(model_fold_dir)
-
+            print(name_model_file)
             if name_model_file.__len__() > 0:
                 if not name_model_file[0].endswith('.pt') and name_model_file.__len__() > 0:
                     name_model_file = os.listdir(model_fold_dir)[0]
@@ -210,9 +238,9 @@ def main():
                 elif isinstance(model, torch.nn.Module):
                     model.load_state_dict(model_dict)
                 model_trained = True
-            else:
-                print("No checkpoint found for the fold: ", fold, '\n --------------------------------------',
-                      '\n Training from scratch...')
+        else:
+            print("No checkpoint found for the fold: ", fold, '\n --------------------------------------',
+                  '\n Training from scratch...')
 
         model = model.to(device)
 
@@ -249,7 +277,14 @@ def main():
                                             cfg=cfg)
 
             # Plot Training
-            plot_regression(history=history, plot_training_dir=plot_training_fold_dir)
+            if cfg['model']['structure'] == 'brixia_Lung':
+                name_of_accuracies = ['LL', 'RL']
+            elif cfg['model']['structure'] == 'brixia_Global':
+                name_of_accuracies = ['G']
+            else:
+                name_of_accuracies = ['LL', 'RL', 'G']
+
+            plot_regression(history=history, plot_training_dir=plot_training_fold_dir, name_of_accuracies=name_of_accuracies)
 
         # ------------------- EVALUATION -------------------
         # Evaluate the model on all the validation data

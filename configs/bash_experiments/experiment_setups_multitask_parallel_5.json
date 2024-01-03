@@ -3,12 +3,25 @@
     "config_file" : "parallel_config_multitask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "all"
+    "models": "diff",
+    "structure": "brixia_Lung",
+    "release": 1
   },
-    {
-    "config_file" : "parallel_config_multitask_Masked_cv5.yaml",
+  {
+    "config_file" : "parallel_config_multitask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "all"
+    "models": "diff",
+    "structure": "brixia_Global",
+    "release": 1
+  },
+    {
+    "config_file" : "parallel_config_multitask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "diff",
+    "structure": "regression",
+    "release": 1
   }
 ]
+

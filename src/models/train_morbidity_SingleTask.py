@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--unfreeze", help="not freezed layers", default=-1)
     parser.add_argument("--id_exp", help="seed", default=1)
     parser.add_argument("--checkpointer", "-c", help="seed", action='store_true')
+    parser.add_argument("--release", help="Fold directory", default='3')
     args = parser.parse_args()
 
     # Load configuration file
@@ -42,13 +43,34 @@ def main():
         del cfg_common
     # Seed everything
     seed_all(cfg['seed'])
+    # FOLD NAME
+
+    cv = cfg['data']['cv']
+    # APPLY THIS MODIFICATION
+    if args.release:
+        if args.release == '3':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF123.xlsx")
+            fold_dir = str(f"data/processed/AFC/{str(cv)}")
+            name_release = '3release'
+        elif args.release == '2':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF12.xlsx")
+            fold_dir = str(f"data/processed/AFC_2R/{str(cv)}")
+            name_release = '2release'
+        elif args.release == '1':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF1.xlsx")
+            fold_dir = str(f"data/processed/AFC_1R/{str(cv)}")
+            name_release = '1release'
+        cfg['data']['fold_dir'] = fold_dir
+        cfg['data']['box_dir'] = box_file
+    print('_______ DATA PATHS _______')
+    print(' ----------| Fold directory: ', cfg['data']['fold_dir'])
+    print(' ----------| Box directory: ', cfg['data']['box_dir'])
 
     # Parameters
     batch_size = cfg['trainer']['batch_size']
     classes = cfg['data']['classes']
     model_name = args.model_name
     steps = ['train', 'val', 'test']
-    cv = cfg['data']['cv']
     fold_list = list(range(cv)) if isinstance(cv, int) else [int(value) for value in os.listdir(cfg['data']['fold_dir'])]
     print(fold_list)
     # Data config
@@ -81,18 +103,24 @@ def main():
     num_workers = 0 if device.type == "cpu" else cfg['device']['gpu_num_workers']
     print(device)
     # Directories
-    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}'
+    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}' + f'_{name_release}'
     cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
     # Files and Directories
-    model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)  # folder to save model
+
+    model_dir = os.path.join(cfg['root'], cfg['data']['model_dir'],
+                             exp_name,
+                             model_name)  # folder to save model
     print(' ----------| Model directory: ', model_dir)
-    if not args.checkpointer and os.path.exists(model_dir):
+    if os.path.exists(model_dir) and not args.checkpointer:
         shutil.rmtree(model_dir)
     mkdir(model_dir)
-    report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name)  # folder to save results
+
+    report_dir = os.path.join(cfg['root'],cfg['data']['report_dir'],
+                             exp_name,
+                             model_name)
     print(' ----------| Report directory: ', report_dir)
-    if not args.checkpointer and os.path.exists(report_dir):
+    if os.path.exists(report_dir) and not args.checkpointer:
         shutil.rmtree(report_dir)
     mkdir(report_dir)
 
@@ -185,10 +213,13 @@ def main():
         model = model.to(device)
 
         # Loss function
+
         if cfg['trainer']['loss'].lower() == 'mse':
             criterion = nn.MSELoss().to(device)
         elif cfg['trainer']['loss'].lower() == 'bce':
             criterion = nn.BCELoss().to(device)
+        elif cfg['trainer']['loss'].lower() == 'ce':
+            criterion = nn.CrossEntropyLoss().to(device)
         # ------------------- TRAINING -------------------
         if not model_trained:
             # Optimizer

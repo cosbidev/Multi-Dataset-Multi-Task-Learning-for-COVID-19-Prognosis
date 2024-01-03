@@ -12,39 +12,55 @@ sys.path.append(os.getcwd())
 
 # Sample data
 np.random.seed(42)
-image_types = ['Entire', 'LungMask']
-base_models = ["densenet121_CXR",
-               "densenet121",
-               "googlenet",
-               "mobilenet_v2",
-               "resnet18",
-               "resnet34",
-               "resnet50",
-               "resnet50_ChestX-ray14",
-               "resnet50_ChexPert",
-               "resnet50_ImageNet_ChestX-ray14",
-               "resnet50_ImageNet_ChexPert",
-               "resnet101",
-               "resnext50_32x4d",
-               "shufflenet_v2_x0_5",
-               "shufflenet_v2_x1_0",
-               "wide_resnet50_2",
-               "densenet161",
-               "densenet169",
-               "densenet201",
-               ]
+image_types = ['Entire']
+base_models = \
+    ['googlenet',
+     'resnet50_ImageNet_ChestX-ray14',
+     'mobilenet_v2',
+     'densenet161',
+     'shufflenet_v2_x0_5',
+     'shufflenet_v2_x1_0',
+     'efficientnet_lite0',
+     'densenet201',
+     'densenet121',
+     'efficientnet_b0',
+     'densenet121_CXR',
+     'efficientnet_es_pruned',
+     'resnet50_ChexPert',
+     'resnet34',
+     'densenet169',
+     'efficientnet_b1_pruned',
+     'resnet101',
+     'resnext50_32x4d',
+     'wide_resnet50_2',
+     'resnet50',
+     'resnet50_ImageNet_ChexPert',
+     'efficientnet_es',
+     'resnet50_ChestX-ray14',
+     'resnet18']
 
-metrics = ['Accuracy', 'F1_score',  'Accuracy-Severe', 'Accuracy-Mild']
+metrics = ['Accuracy', 'F1_score', 'Accuracy-Severe', 'Accuracy-Mild', 'ROC-AUC']
 models = base_models
-experiments = ['BINA_h1', 'BASELINE_BINA', 'Curriculum_BINA_adaptive-2']  # 'BINA_BX_cl',
+experiments = [
+               'BASELINE_1release',
+               'BASELINE_3release',
+               'BASELINE_2release',
+               'MULTI_1release_brixia_Global',
+               'MULTI_1release_brixia_Lung',
+               'MULTI_1release_regression',
+               'MULTI_2release_brixia_Global',
+               'MULTI_2release_brixia_Lung',
+               'MULTI_2release_regression',
+               'MULTI_3release_brixia_Global',
+               'MULTI_3release_brixia_Lung',
+               'MULTI_3release_regression', ]  # 'BINA_BX_cl', ,
+# 'Curriculum_BINA_adaptive-2',
 categories = ['mean', 'std']
 cross_val_strategies = ['CV5', 'loCo']
-head_modes = ['parallel', 'serial', 'baseline']
+head_modes = ['parallel', 'baseline']
 
-
-df = load_experiments_results(['reports'], experiments=experiments, setups_cv=['CV5', 'loCo'], image_types=['Entire', 'LungMask'], head_modes=['parallel', 'serial', 'baseline'] ,
-                              metrics=['F1_score', 'Accuracy', 'Accuracy-Severe', 'Accuracy-Mild'], models_names=base_models)
-
+df = load_experiments_results(['reports'], experiments=experiments, setups_cv=cross_val_strategies, image_types=image_types, head_modes=['parallel', 'baseline'],
+                              metrics=metrics, models_names=base_models)
 
 label_font_STYLE = {'font-weight': 'bold', 'font-size': '40px', 'margin-bottom': '40px'}
 # App setup
@@ -60,7 +76,7 @@ app.layout = html.Div([
             id='metric-dropdown',
             options=[{'label': metric, 'value': metric} for metric in metrics],
             value=df['Metric'].unique()[0],  # default value
-            style = {'font-size': '30px'},
+            style={'font-size': '30px'},
         ),
     ], style={'border': '3px solid #ccc', 'padding': '30px', 'margin-bottom': '40px'}),
 
@@ -73,43 +89,7 @@ app.layout = html.Div([
                 value=image_types[0],  # default value
                 style={'font-size': '30px'},
             ),
-        ], style={'border': '3px solid #ccc', 'padding': '40px', 'margin-right': '40px', 'display': 'inline-block'}),
-
-        html.Div([
-            html.Label('Select Experiment:', style=label_font_STYLE),
-            dcc.RadioItems(
-                id='experiment-radio',
-                options=[{'label': experiment, 'value': experiment} for experiment in experiments],
-                value=experiments[0],  # default value
-                style={'font-size': '30px'},
-            ),
-        ], style={'border': '3px solid #ccc', 'padding': '40px', 'margin-right': '40px', 'display': 'inline-block'}),
-
-        html.Div([
-            html.Label('Select Cross-Val Strategy:', style=label_font_STYLE),
-            dcc.RadioItems(
-                id='cross-val-radio',
-                options=[{'label': strategy, 'value': strategy} for strategy in cross_val_strategies],
-                value=cross_val_strategies[0],  # default value
-                style={'font-size': '30px'},
-            ),
-        ], style={'border': '3px solid #ccc', 'padding': '40px', 'margin-right': '40px', 'display': 'inline-block'}),
-    ], style={'margin-bottom': '40px'}),
-    html.Div([
-        html.Label('Select Models:', style=label_font_STYLE),
-        dcc.Checklist(
-            id='model-checklist',
-            options=[{'label': model, 'value': model} for model in models],
-            value=models,  # default value set to all models
-            inline=True,  # display inline
-            labelStyle={'margin-bottom': '20px', 'font-size': '30px'},
-            style={'font-size': '30px'},
-        ),
-        html.Button('Select/Deselect All', id='select-all-button', n_clicks=0),
-    ], style={'border': '1px solid #ccc', 'padding': '40px', 'width': '100%', 'font-size': '25px'}),
-    html.Div([
-
-
+        ], style={'border': '10px solid #ccc', 'padding': '40px', 'margin-right': '40px', 'display': 'inline-block'}),
 
         html.Div([
             html.Label('Select Category:', style=label_font_STYLE),
@@ -119,27 +99,51 @@ app.layout = html.Div([
                 value=categories[0],  # default value
                 style={'font-size': '30px'},
             ),
-        ], style={'border': '10px solid #ccc', 'padding': '20px', 'width': '30%', 'display': 'inline-block', 'margin-left': '25px'}),
+        ], style={'border': '10px solid #ccc', 'padding': '30px', 'width': '30%', 'display': 'inline-block', 'margin-left': '25px'}),
+
         html.Div([
-            html.Label('Select Head Mode:', style=label_font_STYLE),
+            html.Label('Select Cross-Val Strategy:', style=label_font_STYLE),
             dcc.RadioItems(
-                id='head-mode-radio',
-                options=[{'label': head_mode, 'value': head_mode} for head_mode in head_modes],
-                value=head_modes[0],  # default value
+                id='cross-val-radio',
+                options=[{'label': strategy, 'value': strategy} for strategy in cross_val_strategies],
+                value=cross_val_strategies[0],  # default value
                 style={'font-size': '30px'},
             ),
-        ], style={'border': '10px solid #ccc', 'padding': '20px', 'width': '30%', 'display': 'inline-block', 'margin-left': '25px'}),
-    ], style={'margin-bottom': '100px'}),
+        ], style={'border': '10px solid #ccc', 'padding': '40px', 'margin-right': '40px', 'display': 'inline-block'}),
+    ], style={'margin-bottom': '40px'}),
 
 
+    html.H2("Multiple Experiments Visualization [ 1 Release AFC ]", style={'text-align': 'center', 'font-family': 'Arial, sans-serif', 'font-weight': 'bold', 'font-size': '40px'}),
+    html.Div([
+        html.Label('Select Experiments:', style=label_font_STYLE),
+        dcc.Checklist(
+            id='experiments-checklist-1',
+            options=[{'label': experiment, 'value': experiment} for experiment in [experiment for experiment in experiments if '1release' in experiment]],
+            value=experiments,  # default value set to all experiments
+            inline=True,  # display inline
+            style={'font-size': '30px'},
+        ),
+    ], style={'border': '1px solid #ccc', 'padding': '20px', 'margin-bottom': '20px'}),
 
-    dcc.Graph(id='plot', style={'height': 1000, 'width': 2500}),
-    html.H2("Multiple Experiments Visualization", style={'text-align': 'center', 'font-family': 'Arial, sans-serif', 'font-weight': 'bold'}),
+    html.Div([
+        html.Label('Select Head Modes:', style=label_font_STYLE),
+        dcc.Checklist(
+            id='head-modes-checklist-1',
+            options=[{'label': head_mode, 'value': head_mode} for head_mode in head_modes],
+            value=head_modes,  # default value set to all head modes
+            style={'font-size': '20px'},
+            inline=True,  # display inline
+        ),
+    ], style={'border': '1px solid #ccc', 'padding': '20px', 'margin-bottom': '20px'}),
+
+    dcc.Graph(id='scatter-plot-1', style={'height': 1000, 'width': 2500}),
+
+    html.H2("Multiple Experiments Visualization [ 2 Release AFC ]", style={'text-align': 'center', 'font-family': 'Arial, sans-serif', 'font-weight': 'bold', 'font-size': '40px'}),
     html.Div([
         html.Label('Select Experiments:', style=label_font_STYLE),
         dcc.Checklist(
             id='experiments-checklist',
-            options=[{'label': experiment, 'value': experiment} for experiment in experiments],
+            options=[{'label': experiment, 'value': experiment} for experiment in [experiment for experiment in experiments if '2release' in experiment]],
             value=experiments,  # default value set to all experiments
             inline=True,  # display inline
             style={'font-size': '30px'},
@@ -157,9 +161,41 @@ app.layout = html.Div([
         ),
     ], style={'border': '1px solid #ccc', 'padding': '20px', 'margin-bottom': '20px'}),
 
-    dcc.Graph(id='scatter-plot', style={'height': 1000, 'width': 2500})
-], style={'font-family': 'Arial, sans-serif', 'padding': '20px'})
+    dcc.Graph(id='scatter-plot-2', style={'height': 1000, 'width': 2500}),
 
+
+    html.H2("Multiple Experiments Visualization [ 3 Release AFC ]", style={'text-align': 'center', 'font-family': 'Arial, sans-serif', 'font-weight': 'bold', 'font-size': '40px'}),
+    html.Div([
+        html.Label('Select Experiments:', style=label_font_STYLE),
+        dcc.Checklist(
+            id='experiments-checklist-3',
+            options=[{'label': experiment, 'value': experiment} for experiment in [experiment for experiment in experiments if '3release' in experiment]],
+            value=experiments,  # default value set to all experiments
+            inline=True,  # display inline
+            style={'font-size': '30px'},
+        ),
+    ], style={'border': '1px solid #ccc', 'padding': '20px', 'margin-bottom': '20px'}),
+
+    html.Div([
+        html.Label('Select Head Modes:', style=label_font_STYLE),
+        dcc.Checklist(
+            id='head-modes-checklist-3',
+            options=[{'label': head_mode, 'value': head_mode} for head_mode in head_modes],
+            value=head_modes,  # default value set to all head modes
+            style={'font-size': '20px'},
+            inline=True,  # display inline
+        ),
+    ], style={'border': '1px solid #ccc', 'padding': '20px', 'margin-bottom': '20px'}),
+
+    dcc.Graph(id='scatter-plot-3', style={'height': 1000, 'width': 2500})
+
+
+
+
+
+
+
+], style={'font-family': 'Arial, sans-serif', 'padding': '20px'})
 
 @app.callback(
     Output('model-checklist', 'value'),
@@ -174,63 +210,65 @@ def select_deselect_all(n_clicks, selected_models):
 
 
 @app.callback(
-    Output('plot', 'figure'),
+    Output('scatter-plot-1', 'figure'),
     [Input('image-type-radio', 'value'),
-     Input('model-checklist', 'value'),
-     Input('experiment-radio', 'value'),
      Input('category-radio', 'value'),
      Input('cross-val-radio', 'value'),
-     Input('head-mode-radio', 'value'),
+     Input('experiments-checklist-1', 'value'),
+     Input('head-modes-checklist-1', 'value'),
      Input('metric-dropdown', 'value')]  # Add the metric input
 )
-def update_bar_plot(selected_image_type, selected_models, selected_experiment, selected_category, selected_cross_val_strategy, selected_head_mode, selected_metric):
+def update_scatter_plot_1(selected_image_type, selected_category, selected_cross_val_strategy, selected_experiments, selected_head_modes, selected_metric):
     filtered_df = df[(df['Image Type'] == selected_image_type) &
-                     (df['Model'].isin(selected_models)) &
-                     (df['Experiment'] == selected_experiment) &
                      (df['Category'] == selected_category) &
                      (df['Cross Val Strategy'] == selected_cross_val_strategy) &
-                     (df['Head Mode'] == selected_head_mode) &
-                     (df['Metric'] == selected_metric)]
-    if selected_experiment == "BASELINE_BINA":
-        selected_head_mode = "baseline"
-    fig = px.bar(filtered_df, x='Model', y='Value', color='Model', hover_data=['Value'],
-                 title=f'Bar Plot for {selected_experiment} ({selected_category}) - {selected_cross_val_strategy} - {selected_head_mode}',
-        )
+                     (df['Experiment'].isin(selected_experiments)) &
+                     (df['Head Mode'].isin(selected_head_modes)) &
+                     (df['Metric'] == selected_metric) & (df['Release'] == 'AFC1')]
+    # Create the scatter plot
+    fig = go.Figure()
 
-    # Update text font size inside bars
-    fig.update_traces(textfont_size=25)
-    # Update font size for axis titles, tick labels and legend
+    # Define marker styles
+    marker_styles = {
+        'parallel': dict(symbol='circle', size=15, line=dict(width=2)),
+        'serial': dict(symbol='square', size=15, line=dict(width=2))
+    }
+
+    # Find the best performance for each model
+    best_performances = filtered_df.loc[filtered_df.groupby('Model')['Value'].idxmax()] if selected_category == 'mean' else filtered_df.loc[filtered_df.groupby('Model')['Value'].idxmin()]
+
+    # Iterate through experiments and head modes to create scatter plots
+    for experiment in selected_experiments:
+        for head_mode in selected_head_modes:
+            exp_head_df = filtered_df[(filtered_df['Experiment'] == experiment) & (filtered_df['Head Mode'] == head_mode)]
+            if not exp_head_df.empty:
+                # Check if the current subset includes the best performance for each model
+                sizes = [22 if row['Model'] in best_performances['Model'].values and row['Value'] == best_performances[best_performances['Model'] == row['Model']]['Value'].values[0] else 12
+                         for _, row in exp_head_df.iterrows()]
+                # Apply the marker style based on the head mode
+                marker_style = marker_styles.get(head_mode, dict(size=15, line=dict(width=2)))
+                marker_style['size'] = sizes
+                # Add the scatter plot for the current subset
+                fig.add_trace(go.Scatter(
+                    x=exp_head_df['Model'],
+                    y=exp_head_df['Value'],
+                    mode='markers',
+                    name=f"{experiment} - {head_mode}",
+                    marker=marker_style,
+                ))
+
+    # Update the layout
     fig.update_layout(
-        title_text=f'Show Single Experiment: {selected_experiment}',
-        title_font=dict(size=35),
-        xaxis=dict(
-            title_text='Model Name',
-            title_font=dict(size=27),
-            tickfont=dict(size=23),
-            showgrid=True,  # Show gridlines for x-axis
-            gridwidth=1,  # Set gridline width for x-axis
-            gridcolor='lightgrey',  # Set gridline color for x-axis
-        ),
-        yaxis=dict(
-            title_text=f'{selected_metric}',
-            title_font=dict(size=27),
-            tickfont=dict(size=20),
-            showgrid=True,  # Show gridlines for y-axis
-            gridwidth=2,  # Set gridline width for y-axis
-            gridcolor='black',  # Set gridline color for y-axis
-            dtick = 2 if 'Accuracy' in selected_metric else 1
-        ),
-        plot_bgcolor='white',  # Set the background color of the plot
-        legend=dict(
-            font=dict(size=24)
-        )
+        title=f'<b>[METRIC: {selected_metric}] Scatter Plot for Selected Experiments and Head Modes ({selected_category}) - {selected_cross_val_strategy}',
+        xaxis_title='Model',
+        yaxis_title=f'{selected_metric}',
+        legend_title='Experiment - Head Mode',
+        font=dict(size=25)
     )
 
     return fig
-
-
 @app.callback(
-    Output('scatter-plot', 'figure'),
+    Output('scatter-plot-2', 'figure'),
     [Input('image-type-radio', 'value'),
      Input('category-radio', 'value'),
      Input('cross-val-radio', 'value'),
@@ -238,13 +276,13 @@ def update_bar_plot(selected_image_type, selected_models, selected_experiment, s
      Input('head-modes-checklist', 'value'),
      Input('metric-dropdown', 'value')]  # Add the metric input
 )
-def update_scatter_plot(selected_image_type, selected_category, selected_cross_val_strategy, selected_experiments, selected_head_modes, selected_metric):
+def update_scatter_plot_2(selected_image_type, selected_category, selected_cross_val_strategy, selected_experiments, selected_head_modes, selected_metric):
     filtered_df = df[(df['Image Type'] == selected_image_type) &
                      (df['Category'] == selected_category) &
                      (df['Cross Val Strategy'] == selected_cross_val_strategy) &
                      (df['Experiment'].isin(selected_experiments)) &
                      (df['Head Mode'].isin(selected_head_modes)) &
-                     (df['Metric'] == selected_metric)]
+                     (df['Metric'] == selected_metric) & (df['Release'] == 'AFC12')]
     # Create the scatter plot
     fig = go.Figure()
 
@@ -288,6 +326,62 @@ def update_scatter_plot(selected_image_type, selected_category, selected_cross_v
 
     return fig
 
+@app.callback(
+    Output('scatter-plot-3', 'figure'),
+    [Input('image-type-radio', 'value'),
+     Input('category-radio', 'value'),
+     Input('cross-val-radio', 'value'),
+     Input('experiments-checklist-3', 'value'),
+     Input('head-modes-checklist-3', 'value'),
+     Input('metric-dropdown', 'value')]  # Add the metric input
+)
+def update_scatter_plot_3(selected_image_type, selected_category, selected_cross_val_strategy, selected_experiments, selected_head_modes, selected_metric):
+    filtered_df = df[(df['Image Type'] == selected_image_type) &
+                     (df['Category'] == selected_category) &
+                     (df['Cross Val Strategy'] == selected_cross_val_strategy) &
+                     (df['Experiment'].isin(selected_experiments)) &
+                     (df['Head Mode'].isin(selected_head_modes)) &
+                     (df['Metric'] == selected_metric) & (df['Release'] == 'AFC123')]
+    # Create the scatter plot
+    fig = go.Figure()
+    # Define marker styles
+    marker_styles = {
+        'parallel': dict(symbol='circle', size=15, line=dict(width=2)),
+        'serial': dict(symbol='square', size=15, line=dict(width=2))
+    }
 
+    # Find the best performance for each model
+    best_performances = filtered_df.loc[filtered_df.groupby('Model')['Value'].idxmax()] if selected_category == 'mean' else filtered_df.loc[filtered_df.groupby('Model')['Value'].idxmin()]
+
+    # Iterate through experiments and head modes to create scatter plots
+    for experiment in selected_experiments:
+        for head_mode in selected_head_modes:
+            exp_head_df = filtered_df[(filtered_df['Experiment'] == experiment) & (filtered_df['Head Mode'] == head_mode)]
+            if not exp_head_df.empty:
+                # Check if the current subset includes the best performance for each model
+                sizes = [22 if row['Model'] in best_performances['Model'].values and row['Value'] == best_performances[best_performances['Model'] == row['Model']]['Value'].values[0] else 12
+                         for _, row in exp_head_df.iterrows()]
+                # Apply the marker style based on the head mode
+                marker_style = marker_styles.get(head_mode, dict(size=15, line=dict(width=2)))
+                marker_style['size'] = sizes
+                # Add the scatter plot for the current subset
+                fig.add_trace(go.Scatter(
+                    x=exp_head_df['Model'],
+                    y=exp_head_df['Value'],
+                    mode='markers',
+                    name=f"{experiment} - {head_mode}",
+                    marker=marker_style,
+                ))
+
+    # Update the layout
+    fig.update_layout(
+        title=f'<b>[METRIC: {selected_metric}] Scatter Plot for Selected Experiments and Head Modes ({selected_category}) - {selected_cross_val_strategy}',
+        xaxis_title='Model',
+        yaxis_title=f'{selected_metric}',
+        legend_title='Experiment - Head Mode',
+        font=dict(size=25)
+    )
+
+    return fig
 if __name__ == '__main__':
     app.run_server(debug=False)

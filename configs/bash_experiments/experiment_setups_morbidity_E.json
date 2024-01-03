@@ -1,27 +1,23 @@
 [
   {
     "config_file" : "afc_config_singletask_cv5.yaml",
-    "name" : "loCo",
-    "fold" : "loCo",
-    "models": "['squeezenet1_0', 'squeezenet1_1', 'vgg13', 'vgg16']"
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "all",
+    "structure": "none",
+    "release_number": 2
+
   },
   {
-    "config_file" : "afc_config_singletask_Masked_cv5.yaml",
-    "name" : "loCo",
-    "fold" : "loCo",
-    "models": "['squeezenet1_1', 'vgg11']"
-  },{
     "config_file" : "afc_config_singletask_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "['squeezenet1_0', 'squeezenet1_1', 'vgg13', 'resnet18', 'resnet50', 'resnet34']"
-  },
-  {
-    "config_file" : "afc_config_singletask_Masked_loCo.yaml",
-    "name" : "loCo",
-    "fold" : "loCo",
-    "models": "['vgg11', 'vgg13', 'vgg16', 'resnet18', 'resnet50', 'resnet34']"
+    "models": "all",
+    "structure": "none",
+    "release_number": 2
+
   }
+
 ]
 
 

@@ -11,6 +11,7 @@ from PIL import Image
 from scipy.ndimage import shift, gaussian_filter, map_coordinates
 
 
+
 def elastic_transform(image, alpha_range, sigma, random_state=None):
     """Elastic deformation of images as described in [Simard2003]_.
     .. [Simard2003] Simard, Steinkraus and Platt, "Best Practices for

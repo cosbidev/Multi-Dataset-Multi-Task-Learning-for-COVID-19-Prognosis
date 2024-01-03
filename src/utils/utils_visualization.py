@@ -200,7 +200,7 @@ def plot_training_multi_cl(data_history,  data,  data_classes, plot_curriculum_d
 
 
 
-def plot_regression(history, plot_training_dir):
+def plot_regression(history, plot_training_dir, name_of_accuracies = ['LL', 'RL']):
     # Training results Loss function
     colors = ['r', 'b']
     plt.figure(figsize=(8, 6))
@@ -208,14 +208,14 @@ def plot_regression(history, plot_training_dir):
         plt.plot(history[c], label=c, color=colors[i])
     plt.legend()
     plt.xlabel('Epoch')
-    plt.ylabel('MSE error on Global Score')
+    plt.ylabel('BCE error on Global Score')
     plt.title('Training and Validation Losses')
     plt.savefig(os.path.join(plot_training_dir, "Loss"))
     plt.close()
 
-    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
+    fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(15, 10))
     list_axis = axs.tolist()
-    name_of_accuracies = ['G', 'LL', 'RL']
+    name_of_accuracies = name_of_accuracies
     for name_acc, ax in zip(name_of_accuracies, list_axis):
         for i, c in enumerate(['train_acc_' + name_acc, 'val_acc_' + name_acc]):
             ax.plot(history[c], label=c, color=colors[i])

@@ -1,0 +1,10 @@
+[
+  {
+    "config_file" : "afc_config_singletask_cv10.yaml",
+    "name" : "cv10",
+    "fold" : 10,
+    "models": "all",
+    "structure": "none",
+    "release": 3
+  }
+]

@@ -1,6 +1,9 @@
 import glob
 import sys
 import os
+
+import numpy as np
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 print('Python %s on %s' % (sys.version, sys.platform))
@@ -18,7 +21,7 @@ from src import mkdir, seed_all, DatasetImgAFC, seed_worker, get_SingleTaskModel
 
 def main():
     # ID experiment
-    id_exp = 'BINA'
+    id_exp = 'BINA-r2'
 
     """
     'configs/5/morbidity/afc_config_singletask_cv5.yaml',
@@ -26,8 +29,8 @@ def main():
     """
 
     for cfg_file in [
+                     'configs/5/morbidity/afc_config_singletask_cv5.yaml',
                      'configs/loCo/morbidity/afc_config_singletask_loCo.yaml',
-                     'configs/loCo/morbidity/afc_config_singletask_Masked_loCo.yaml',
                      ]:
         # Load configuration file
         with open(cfg_file) as file:
@@ -43,27 +46,27 @@ def main():
         batch_size = cfg['trainer']['batch_size']
         classes = cfg['data']['classes']
 
-        model_list = ["mobilenet_v2",
-                      "densenet121_CXR",
-                      "densenet121",
-                      "densenet201",
-                      "densenet161",
-                      "densenet169",
-                      "googlenet",
-                      "mobilenet_v2",
-                      "resnet18",
-                      "resnet34",
-                      "resnet50",
-                      "resnet50_ChestX-ray14",
-                      "resnet50_ChexPert",
-                      "resnet50_ImageNet_ChestX-ray14",
-                      "resnet50_ImageNet_ChexPert",
-                      "resnet101",
-                      "resnext50_32x4d",
-                      "shufflenet_v2_x0_5",
-                      "shufflenet_v2_x1_0",
-                      "wide_resnet50_2",
-                      ]
+        model_list = ['efficientnet_es_pruned',
+ 'resnet18',
+ 'mobilenet_v2',
+ 'resnet50_ImageNet_ChexPert',
+ 'efficientnet_es',
+ 'resnet50_ImageNet_ChestX-ray14',
+ 'resnet50',
+ 'resnet50_ChexPert',
+ 'densenet121',
+ 'resnext50_32x4d',
+ 'resnet50_ChestX-ray14',
+ 'densenet121_CXR',
+ 'shufflenet_v2_x0_5',
+ 'wide_resnet50_2',
+ 'googlenet',
+ 'shufflenet_v2_x1_0',
+ 'efficientnet_lite0',
+ 'resnet34',
+ 'resnet101',
+ 'efficientnet_b0',
+ 'efficientnet_b1_pruned',]
 
         steps = ['train']
         cv = cfg['data']['cv']
@@ -122,7 +125,7 @@ def main():
             for model_name in model_list:
 
                 # Files and Directories
-                model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)
+                model_dir = os.path.join(cfg['root'],cfg['data']['model_dir'], exp_name, model_name)
                 report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name)
                 model_fold_dir = os.path.join(model_dir, str(fold))
                 print('-------------------')
@@ -279,12 +282,12 @@ def main():
 
                 # ------------------- PLOT -------------------
 
-                """
+
                 # Scatter plot of the data points, with color coding for each cluster
                 # plt.scatter(data_to_cluster['probs'], data_to_cluster['Loss'], c=data_to_cluster['Cluster'], cmap='viridis', marker='o')
                 colors = ['blue', 'yellow']
     
-    
+                """  
                 f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(15, 5))
     
                 f.set_figheight(15)
@@ -317,7 +320,7 @@ def main():
                     ax1.grid(True)
     
                     # Class label 1 and label for correct and incorrect images
-                    data_to_plot_class_1 = results_for_images_q[(results_for_images_q['Correct'] == label_correct) & (results_for_images_q['labels'] == 0)]
+                    data_to_plot_class_1 = results_for_images_q[(results_for_images_q['Correct'] == label_correct) & (results_for_images_q['labels'] == 1)]
     
                     # Quantile Sampling Variable: Probability
                     q_1 = data_to_plot_class_1['q']
@@ -336,8 +339,6 @@ def main():
     
                 # Show the centroids
                 plt.legend()
-                # Show the plot
-                plt.show()
     
                 pass"""
 

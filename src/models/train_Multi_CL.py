@@ -101,15 +101,21 @@ def main():
     cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
 
-    model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)  # folder to save model
+    model_dir = os.path.join(cfg['data']['model_dir'] if (cfg['root'] == '.' or is_debug()) else os.path.join(cfg['root'],cfg['data']['model_dir']),
+                             exp_name,
+                             model_name)  # folder to save model
     print(' ----------| Model directory: ', model_dir)
-    if not args.checkpointer and os.path.exists(model_dir):
+    if os.path.exists(model_dir) and not args.checkpointer:
         shutil.rmtree(model_dir)
-
     mkdir(model_dir)
-    report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name)  # folder to save results
+
+
+    report_dir = os.path.join(cfg['data']['report_dir'],
+                             exp_name,
+                             model_name)
+
     print(' ----------| Report directory: ', report_dir)
-    if not args.checkpointer and os.path.exists(report_dir):
+    if os.path.exists(report_dir) and not args.checkpointer:
         shutil.rmtree(report_dir)
     mkdir(report_dir)
 
@@ -146,6 +152,11 @@ def main():
     final_results_test_M = pd.DataFrame(columns=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC Score'])
     # 2) TEST SEVERITY
     final_results_test_S = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
+                                                 'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+    # 1) TEST MORBIDITY
+    final_results_test_M_best = pd.DataFrame(columns=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC Score'])
+    # 2) TEST SEVERITY
+    final_results_test_S_best = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
                                                  'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
     # Dataframes Reports:
     history = None
@@ -240,7 +251,6 @@ def main():
 
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            model.activate_Head_training_module()
             model = nn.DataParallel(model, [0, 1])
 
         # Checkpointer
@@ -269,6 +279,15 @@ def main():
         # CURRICULUM LEARNING
         curriculum_cfg = cfg['curriculum']
         dictionary_step = [{'AFC': step, 'BX': 100 - step} for step in curriculum_cfg['steps']]
+
+
+
+        quantile_sampling_folder =os.path.join(exp_folder_AFC.replace('models', 'reports'), model_name,'quantile_sampling', str(fold))
+        quantile_sampling_file = os.path.join(quantile_sampling_folder, 'q_train_images.csv')
+
+
+
+
         print(''.center(len(' Curriculum Learning '), '-'))
         # ------------------- DATA -------------------
         if is_debug():
@@ -284,52 +303,92 @@ def main():
         loss = 1000
 
 
+        # CREATE STEPS USING QUANTILES:
 
-        for running_step, step_composition in enumerate(dictionary_step):
+        if os.path.isfile(quantile_sampling_file):
+            quantile_sampling = pd.read_csv(quantile_sampling_file)
+        else:
+            raise FileNotFoundError(f'Quantile sampling file not found: {quantile_sampling_file}')
+
+        # Possible quantiles values:
+
+
+
+        q_values = quantile_sampling['q'].sort_values().unique()
+
+
+        # Create dictionary with quantile values:
+        ids_q_dict  = quantile_sampling.set_index('pz_name')['q'].to_dict()
+
+
+
+        # Create dictionary that for each q value correspond a list of IDS:
+        selection_by_qs = {q: quantile_sampling[quantile_sampling['q'] == q]['pz_name'].to_list() for q in q_values}
+
+        # Aggregate q values in a new dictionary such that the first iteration is only q = 0, in the second 0 and 1, and in the third 0, 1 and 2ù
+        q_values = q_values if cfg['curriculum']['forward'] else q_values[::-1]
+
+        for q in q_values:
+            solo_value = 0 if cfg['curriculum']['forward'] else 2
+            if q == solo_value:
+                continue
+            else:
+                selection_by_qs[q] = selection_by_qs[q] + selection_by_qs[q-1] if cfg['curriculum']['forward'] else selection_by_qs[q] + selection_by_qs[q+1]
+
+
+        # Reorder dictionary:
+        selection_by_qs = {2-q: selection_by_qs[q] for q in q_values} if not cfg['curriculum']['forward'] else selection_by_qs
+
+
+
+
+
+        for q, list_ids in selection_by_qs.items():
+
+
+
+            # Lambda selection steps:
+            lambda_q_steps = lambda q, ids: torch.utils.data.Subset(datasets['train'], datasets['train'].data[datasets['train'].data['dataset_class'] == 'AFC'][(datasets['train'].data[
+                                                                                                                                                                     datasets['train'].data['dataset_class'] == 'AFC'].isin(ids))['img']].index.to_list())
+            # Create new names for the steps:
+            new_names_q_steps = {0: 'easy', 1: 'easy + medium', 2: 'easy + medium + hard'} if cfg['curriculum']['forward'] else {0: 'hard', 1: 'medium + hard', 2: 'easy + medium + hard'}
+
+
 
             print(''.center(len(' Curriculum Learning '), '-'))
             # ------------------- Separate Loaders M and S-------------------
 
+
+
+
+
             subset_selector = lambda step, class_d: torch.utils.data.Subset(datasets[step], datasets[step].data[datasets[step].data['dataset_class'] == class_d].index.to_list())
 
             data_loaders_AFC = {
-                'train': DataLoader(subset_selector('train', 'AFC'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
                 'val': DataLoader(subset_selector('val', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
                 'test': DataLoader(subset_selector('test', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
             data_loaders_BX = {
-                'train': DataLoader(subset_selector('train', 'BX'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
                 'val': DataLoader(subset_selector('val', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
                 'test': DataLoader(subset_selector('test', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-            # MULTITASK LOADERS
-            if step_composition['AFC'] == 0:
-                # Process your batch here
-                data_loaders = {'train': DataLoader(subset_selector('train', 'BX'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
-                                'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                                'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-                idx_to_class = datasets['train'].m_idx_to_class
-            elif step_composition['BX'] == 0:
-                data_loaders = {'train': DataLoader(subset_selector('train', 'AFC'), batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
-                                'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                                'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-                idx_to_class = datasets['train'].m_idx_to_class
-            else:
-                # DEFINE RATIO FOR DATASETS:
-                ratio = step_composition['AFC'] / 100  # PERC from dataset1, 80% from dataset2
-                sampler = CustomSampler(
-                    subset_selector('train', 'AFC'),
-                    subset_selector('train', 'BX'), ratio, batch_size=batch_size)
-                data_loader_train_curriculum = DataLoader(torch.utils.data.ConcatDataset([subset_selector('train', 'AFC'), subset_selector('train', 'BX')]),
-                                                          batch_sampler=sampler,
-                                                          num_workers=num_workers,
-                                                          worker_init_fn=seed_worker,
-                                                          )
-                # Process your batch here
-                data_loaders = {'train': data_loader_train_curriculum,
-                                'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                                'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-                idx_to_class = datasets['train'].m_idx_to_class
+
+            # DEFINE RATIO FOR DATASETS:
+            ratio = 40 / 100  # PERC from dataset1, 80% from dataset2
+
+
+            data_loader_train_curriculum = DataLoader(torch.utils.data.ConcatDataset([lambda_q_steps(q=q, ids=list_ids), subset_selector('train', 'BX')]),
+                                                      num_workers=num_workers,
+                                                      worker_init_fn=seed_worker,
+                                                      batch_size=batch_size,
+
+                                                      )
+            # Process your batch here
+
+            data_loaders = {'train': data_loader_train_curriculum,
+                            'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+                            'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+            idx_to_class = datasets['train'].m_idx_to_class
             # Multi Head Identity Loss Handling
-            cfg['curriculum']['step_running'] = running_step
+            cfg['curriculum']['step_running'] = new_names_q_steps[q]
             criterion = IdentityMultiHeadLoss(cfg=cfg).to(device)
             if not model_trained:
                 # Optimizer
@@ -343,7 +402,7 @@ def main():
                 # Train model using curriculum learning strategy
                 print_CUDA_info()
                 print(''.center(len(' Curriculum Learning '), '-'))
-                print('|||     ITERATION:       {0} % AFC      |||'.format(step_composition['AFC'], len(dictionary_step)))
+                print('|||     ITERATION:       Q - {0}    |||'.format(new_names_q_steps[q], len(dictionary_step)))
                 model, history_partial, best_saved = train_MultiTask(model=model,
                                                                      model_file_name=f'{model_cfg.head}_{model_name}',
                                                                      dataloaders=data_loaders,
@@ -356,7 +415,6 @@ def main():
                                                                      model_dir=model_fold_dir,
                                                                      device=device,
                                                                      save_model=False)
-
                 # Save Training/Validation Loss History
 
                 # TEST RESULTS FOR THE CURRENT ITERATION:
@@ -373,72 +431,45 @@ def main():
                 best_loss = best_saved['best_loss']
                 best_acc = best_saved['best_acc']
 
-
                 if loss > best_loss > 0.0:
                     best_weights_over_iterations = model.state_dict()
                     loss = best_loss
                     accu = best_acc
-                    running_step_best = 'AFC_{0}'.format(step_composition['AFC'])
                     print('-' * 10)
                     print('Best Model Updated between all the iterations of Curriculum Learning')
                     print('Best Model Accuracy: ', accu)
                     print('Best Model Loss: ', loss)
-                    print('Composition: ', step_composition['AFC'])
                     print('-' * 10)
 
-                if step_composition['AFC'] != 0 and step_composition['BX'] != 0:
-                    del data_loaders, data_loader_train_curriculum, sampler
-                    gc.collect()
-                    torch.cuda.empty_cache()
-                else:
-                    del data_loaders
-                    gc.collect()
-                    torch.cuda.empty_cache()
+                del data_loaders, data_loader_train_curriculum
+                gc.collect()
+                torch.cuda.empty_cache()
 
+                # Step iteration Name
+                results_classes_test_iteration['step'] = np.repeat(f'q = {new_names_q_steps[q]}', len(results_classes_test_iteration))
+                history_partial['step'] = np.repeat(f'q = {new_names_q_steps[q]}', len(history_partial))
+                common_metrics_test_iteration['step'] = np.repeat(f'q = {new_names_q_steps[q]}', len(common_metrics_test_iteration))
+                # Group step iteration
+                results_classes_test_iteration['group'] = np.repeat(q, len(results_classes_test_iteration))
+                history_partial['group'] = np.repeat(q, len(history_partial))
+                common_metrics_test_iteration['group'] = np.repeat(q, len(common_metrics_test_iteration))
+                # Fold Number
+                results_classes_test_iteration['fold'] = np.repeat(fold, len(results_classes_test_iteration))
+                history_partial['fold'] = np.repeat(fold, len(history_partial))
+                common_metrics_test_iteration['fold'] = np.repeat(fold, len(common_metrics_test_iteration))
 
-                # Concatenate History:
-                if step_composition['AFC'] == 0 and history is None and results_classes_test_all_iteration is None and common_metrics_test_iteration_all is None:
-
-                    # Step iteration Name
-                    results_classes_test_iteration['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(results_classes_test_iteration))
-                    history_partial['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(history_partial))
-                    common_metrics_test_iteration['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(common_metrics_test_iteration))
-
-                    # Group step iteration
-                    results_classes_test_iteration['group'] = np.repeat(running_step, len(results_classes_test_iteration))
-                    history_partial['group'] = np.repeat(running_step, len(history_partial))
-                    common_metrics_test_iteration['group'] = np.repeat(running_step, len(common_metrics_test_iteration))
-
-                    # Fold Number
-                    results_classes_test_iteration['fold'] = np.repeat(fold, len(results_classes_test_iteration))
-                    history_partial['fold'] = np.repeat(fold, len(history_partial))
-                    common_metrics_test_iteration['fold'] = np.repeat(fold, len(common_metrics_test_iteration))
-
-
+                if q == 0 and history is None and results_classes_test_all_iteration is None and common_metrics_test_iteration_all is None:
                     history = history_partial
                     results_classes_test_all_iteration = results_classes_test_iteration
                     common_metrics_test_iteration_all = common_metrics_test_iteration
                     
                 else:
-                    results_classes_test_iteration['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(results_classes_test_iteration))
-                    history_partial['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(history_partial))
-                    common_metrics_test_iteration['step'] = np.repeat(f'Curriculum = AFC : {step_composition["AFC"]} ', len(common_metrics_test_iteration))
-
-
-                    results_classes_test_iteration['group'] = np.repeat(running_step, len(results_classes_test_iteration))
-                    history_partial['group'] = np.repeat(running_step, len(history_partial))
-                    common_metrics_test_iteration['group'] = np.repeat(running_step, len(common_metrics_test_iteration))
-
-                    results_classes_test_iteration['fold'] = np.repeat(fold, len(results_classes_test_iteration))
-                    history_partial['fold'] = np.repeat(fold, len(history_partial))
-                    common_metrics_test_iteration['fold'] = np.repeat(fold, len(common_metrics_test_iteration))
-
 
                     history = pd.concat([history, history_partial], axis=0).reset_index(drop=True)
                     results_classes_test_all_iteration = pd.concat([results_classes_test_all_iteration, results_classes_test_iteration], axis=0).reset_index(drop=True)
                     common_metrics_test_iteration_all = pd.concat([common_metrics_test_iteration_all, common_metrics_test_iteration], axis=0).reset_index(drop=True)
                 # Save model after curriculum learning
-        torch.save(best_weights_over_iterations, os.path.join(model_fold_dir, f'{model_name}' + f'_{running_step_best}' + '.pt'))
+        torch.save(best_weights_over_iterations, os.path.join(model_fold_dir, f'{model_name}' + f'_q_{q}' + '.pt'))
         best_final = model.state_dict()
         torch.save(best_final, os.path.join(model_fold_dir, f'{model_name}' + '_final' '.pt'))
 
@@ -446,18 +477,11 @@ def main():
 
         print('-----------------------------------'
               '\n Best Model-MultiTask Saved in: %s' % (os.path.join(model_dir, f'{model_name}')))
+
         # Plot Training
         plot_training_multi(history, plot_training_fold_dir)
+
         loss = IdentityMultiHeadLoss(cfg=cfg)
-
-
-
-
-
-
-
-
-
 
 
 
@@ -465,12 +489,7 @@ def main():
         # MORBIDITY TEST EVALUATION
         # Evaluate the model on all the test data using the BEST weights between all the iterations
         model.load_state_dict(best_weights_over_iterations)
-        # REPORT FINAL:
-        # 1) TEST MORBIDITY
-        final_results_test_M_best = pd.DataFrame(columns=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC Score'])
-        # 2) TEST SEVERITY
-        final_results_test_S_best = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
-                                                     'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+
         results_test_by_image_best, results_classes_test_best, common_metrics_test_best = evaluate_morbidity(
             model=model,
             test_loader=data_loaders_AFC['test'],
@@ -488,7 +507,7 @@ def main():
                                    classes_report=results_classes_test_best,
                                    classes=classes,
                                    fold=fold,
-                                   results_by_patient=results_test_by_image,
+                                   results_by_patient=results_test_by_image_best,
                                    model_name=model_name,
                                    report_path=test_results_by_patient,
                                    optional_Dataset='bestABS_AFC'))
@@ -530,11 +549,6 @@ def main():
         # MORBIDITY TEST EVALUATION
         # Evaluate the model on all the test data using the FINAL WEIGHTS
         # REPORT FINAL:
-        # 1) TEST MORBIDITY
-        final_results_test_M = pd.DataFrame(columns=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC Score'])
-        # 2) TEST SEVERITY
-        final_results_test_S = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
-                                                     'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
 
         model.load_state_dict(best_final)
         results_test_by_image, results_classes_test, common_metrics_test = evaluate_morbidity(

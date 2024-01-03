@@ -30,11 +30,12 @@ module load  OpenCV/4.6.0-foss-2022a-CUDA-11.7.0-contrib
 # Executes the code
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID || exit
 
-config='configs/5/multi/serial_config_multitask_cv5.yaml'
+config='configs/5/multi/parallel_config_multitask_cv5.yaml'
 model='resnet18'
-id_exp='try'
+id_exp='debug'
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_Multi_CL.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
+
+python src/models/train_MultiObjectiveModel.py --model_name ${model} --cfg_file ${config} --id_exp ${id_exp}
 # Deactivate venv
 deactivate

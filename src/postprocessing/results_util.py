@@ -2,6 +2,7 @@ import glob
 import os
 import re
 
+import numpy as np
 import pandas as pd
 
 def transform_number(num):
@@ -16,27 +17,33 @@ def transform_number(num):
 def load_experiments_results(paths: list, experiments: list, setups_cv: list, image_types: list, head_modes: list, metrics: list, models_names: list):
     path = paths[0]
     all_list = {}
-    mapper_cv = {'CV5': '5', 'LoCo': 'loCo'}
-    resulting_all = pd.DataFrame()
     list_all_model_missing = {}
     data = []
     # Experiments directory:
     for experiment in experiments:
 
+        if '2release' in experiment:
+            release_class = 'AFC12'
+        elif '3release' in experiment:
+            release_class = 'AFC123'
+        elif '1release' in experiment:
+            release_class = 'AFC1'
+
+
+
         model_list = []
         if "BASELINE" in experiment:
             # AiForCovid directory BASELINE
             name_dir = 'AFC'
+            # Name Mapping for the plot release
             path_exp = os.path.join(path, name_dir)
-            mapper_exp_run_name = {'BASELINE_BINA': 'BINA'}
             old_name = experiment
-            experiment_new = mapper_exp_run_name[experiment]
+            experiment_new = experiment
             # Name Mapping for the cv strategy
             mapper_cv = {'CV5': '5', 'loCo': 'loCo'}
             inverse_mapper_cv  =  {v: k for k, v in mapper_cv.items()}
             # No Head for Baseline
             head_modes_selection = ['']
-
 
         else:
             # MultiTask-Objective directory
@@ -46,17 +53,12 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
             inverse_mapper_cv  = {v: k for k, v in mapper_cv.items()}
             head_modes_selection = head_modes.copy()
             head_modes_selection.remove('baseline')
-            mapper_exp_run_name = {'BINA_h1': 'BINA_h1',
-                                   'BINA_BX': 'BINA_BX',
-                                   'Curriculum_BINA_CL': 'Curriculum_BINA_CL',
-                                   'Curriculum_BINA_CL_noise0.3': 'Curriculum_BINA_CL_noise0.3',
-                                   'Curriculum_BINA_adaptive-2': 'Curriculum_BINA_adaptive-2'}
+
             old_name = experiment
-            experiment_new = mapper_exp_run_name[experiment]
+            experiment_new = experiment
         for setup_cv in setups_cv:
             # Map CV name:
             setup_cv = mapper_cv[setup_cv]
-
             # Map Exp Run Name:
 
             path_exp_cv_runs = os.listdir(os.path.join(path_exp, setup_cv))
@@ -98,7 +100,7 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
                                 else:
                                     all_report = pd.read_csv(
                                         os.path.join(path_exp_cv_images, 'all', file_catcher[0])).set_index('Unnamed: 0')
-                                    all_list[experiment_new + '_' + setup_cv + '_' + 'head' + '_' + image_type] = all_report
+                                    all_list[old_name + '_' + setup_cv + '_' + 'head' + '_' + image_type] = all_report
                                     for model in models_names:
                                         if model in all_report.index:
                                             model_row = all_report.loc[model, :]
@@ -111,18 +113,20 @@ def load_experiments_results(paths: list, experiments: list, setups_cv: list, im
                                             measure_row = model_row[[measure in col for col in model_row.index]]
 
                                             for metric in metrics:
-                                                mapper_metric = {'F1 Score': 'F1_score', 'Accuracy': 'Accuracy', 'SEVERE_accuracy': 'Accuracy-Severe', 'MILD_accuracy': 'Accuracy-Mild'}
+                                                mapper_metric = {'F1 Score': 'F1_score', 'Accuracy': 'Accuracy', 'SEVERE_accuracy': 'Accuracy-Severe', 'MILD_accuracy': 'Accuracy-Mild',
+                                                                 'ROC AUC Score': 'ROC-AUC'}
                                                 inverse_mapper_metric = {v: k for k, v in mapper_metric.items()}
                                                 head_local = 'baseline' if head_ == '' else head_
-                                                experiment_new_local = old_name if  "BASELINE"  in old_name else experiment_new
 
-
+                                                if metric == 'ROC-AUC':
+                                                    pass
                                                 measure_row_metric = measure_row[inverse_mapper_metric[metric] + '_' + measure]
                                                 measure_row_metric= transform_number(measure_row_metric)
-                                                data.append({'Image Type': image_type, 'Model': model, 'Experiment': experiment_new_local,
+                                                data.append({'Image Type': image_type, 'Model': model, 'Experiment': old_name,
                                                              'Category': measure, 'Cross Val Strategy': inverse_mapper_cv[setup_cv],
-                                                             'Head Mode': head_local, 'Value': measure_row_metric, 'Metric': metric})
-                                    list_all_model_missing[experiment + '_' + image_type + '_' + experiment_new_local + '_' + inverse_mapper_cv[setup_cv] + '_' + head_local] = model_list
+                                                             'Head Mode': head_local, 'Value': measure_row_metric, 'Metric': metric, 'Release': release_class})
+                                    list_all_model_missing[experiment + '_' + image_type + '_' + old_name + '_' + inverse_mapper_cv[setup_cv] + '_' + head_local] = list(np.unique(
+                                        model_list))
 
     return pd.DataFrame(data)
 

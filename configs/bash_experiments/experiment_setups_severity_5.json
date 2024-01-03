@@ -1,8 +1,18 @@
-[
+[{
+    "config_file" : "bx_config_singletask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "['mobilenet_v2']",
+    "structure": "brixia_Lung",
+    "release": null
+  },
   {
-    "config_file": "bx_config_singletask_Masked_cv5.yaml",
-    "name": "cv5",
-    "fold": 5,
-    "models": "['densenet161']"
+    "config_file" : "bx_config_singletask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "eff",
+    "structure": "regression",
+    "release": null
   }
+
 ]

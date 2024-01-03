@@ -15,9 +15,8 @@ from src import rotate, mkdir, chunks
 
 """
 sys.argv.extend(
-        [
+        [   '-cv', '10',
             '-o', 'data/processed',
-            '-i', 'data/BRIXIA/processed/box_data_BX.xlsx',
             '-d', 'BX',
             '-m', 'data/BRIXIA/metadata_global_v2.csv'
         ]
@@ -25,9 +24,9 @@ sys.argv.extend(
 # Add the configuration (AFC)
 """
 sys.argv.extend(
-        [
+        [   '-releases', '3',
+            '-cv', '10',
             '-o', 'data/processed',
-            '-i', 'data/AIforCOVID/processed/box_data_AXF123.xlsx',
             '-d', 'AFC',
             '-m', 'data/AIforCOVID'
         ]
@@ -36,13 +35,12 @@ sys.argv.extend(
 
 # Configuration file
 parser = argparse.ArgumentParser(description="Configuration File")
+parser.add_argument("-releases", "--releases", help="Releases", type=int, choices=[1,2,3])
 parser.add_argument("-cv", "--fold", help="Number of folder", type=int, default=5)
 parser.add_argument("-d", "--dataset_name", help="dataset name (BX, AFC, Multi)", choices=['BX', 'AFC', 'Multi'], type=str)
 parser.add_argument("-o", "--output_dir", help="output directory path", default="data/processed", required=True)
-parser.add_argument("-i", "--input_data", help="input directory path for data", default="data/processed", required=True)
 parser.add_argument("-m", "--metadata", help="input directory path for metadata", default="data/processed", required=True)
 args = parser.parse_args()
-cv = 5
 
 
 def ValidationCreation():
@@ -54,18 +52,18 @@ def ValidationCreation():
 
     global classes
     print()
-    data_file = args.input_data
+
     dataset_name = args.dataset_name
-    dest_dir = os.path.join(args.output_dir, dataset_name)
+    dest_dir = os.path.join(args.output_dir, dataset_name + f'_{args.releases}R')
     cv = args.fold
 
-
-
-    db = pd.read_excel(data_file, header=0, index_col="img")
-    db.sort_index(inplace=True)
     label_col = "label"
-
     if dataset_name == "BX":
+
+        data_file = 'data/BRIXIA/processed/box_data_BX.xlsx'
+        db = pd.read_excel(data_file, header=0, index_col="img")
+        db.sort_index(inplace=True)
+
         classes = list(db[label_col])
         label_col = "label_dim"
         scores_int = [[eval(val) for val in list(c.replace('[', '').replace(']',''))]for c in classes]
@@ -74,9 +72,19 @@ def ValidationCreation():
         db[label_col] = classes
         classes, classes_counts =np.unique(classes, return_counts=True)
     elif dataset_name == "AFC":
-        classes, classes_counts =np.unique(db[label_col], return_counts=True)
-        pass
 
+        if args.releases == 1:
+            data_file = 'data/AIforCOVID/processed/box_data_AXF1.xlsx'
+        elif args.releases == 2:
+            data_file = 'data/AIforCOVID/processed/box_data_AXF12.xlsx'
+        elif args.releases == 3:
+            data_file = 'data/AIforCOVID/processed/box_data_AXF123.xlsx'
+        db = pd.read_excel(data_file, header=0, index_col="img")
+        db.sort_index(inplace=True)
+        classes, classes_counts =np.unique(db[label_col], return_counts=True)
+
+
+    # CV SPLIT
     if cv == 10:
         div = 10
         test_split = 1
@@ -144,16 +152,24 @@ def ValidationCreation():
         base_data_folder = args.metadata
         path_to_data_1 = os.path.join(base_data_folder, 'imgs')
         path_to_data_2 = os.path.join(base_data_folder, 'imgs_r2')
-        path_to_data_3 = os.path.join(base_data_folder, 'imgs_r3')
         # CLINICAL DATA
+
+
         meta_path = os.path.join(base_data_folder, 'AIforCOVID.xlsx')
-        meta_path_2 = os.path.join(base_data_folder, 'AIforCOVID_r2.xlsx')
-        meta_path_3 = os.path.join(base_data_folder, 'AIforCOVID_r3.xlsx')
-        # Clinical Data:
         clinical_meta_ = pd.read_excel(meta_path)
-        clinical_meta_2 = pd.read_excel(meta_path_2)
-        clinical_meta_3 = pd.read_excel(meta_path_3)
-        clinical_meta_global = pd.concat([clinical_meta_, clinical_meta_2, clinical_meta_3])
+        clinical_meta_global = clinical_meta_
+        if args.releases == 2:
+            meta_path = os.path.join(base_data_folder, 'AIforCOVID_r2.xlsx')
+            clinical_meta_2 = pd.read_excel(meta_path)
+            clinical_meta_global = pd.concat([clinical_meta_, clinical_meta_2])
+        elif args.releases == 3:
+            meta_path = os.path.join(base_data_folder, 'AIforCOVID_r2.xlsx')
+            clinical_meta_2 = pd.read_excel(meta_path)
+            meta_path = os.path.join(base_data_folder, 'AIforCOVID_r3.xlsx')
+            clinical_meta_3 = pd.read_excel(meta_path)
+            clinical_meta_global = pd.concat([clinical_meta_, clinical_meta_2, clinical_meta_3])
+
+
         print('Clinical metadata loaded AFC')
         clinical_meta_global.set_index('ImageFile', inplace=True)
         Centers = clinical_meta_global['Hospital'].str.upper().unique()
@@ -181,7 +197,7 @@ def ValidationCreation():
             file.write(row)
             all.append(row)
 
-    folds = [[]]*cv
+    folds = [[]]*div
 
 
     for c in classes:
@@ -226,13 +242,21 @@ def ValidationCreation():
                 random.seed(0)
                 random.shuffle(patient_class_center)
                 # create splits
-                folds_class_center = list(chunks(patient_class_center, len(patient_class_center) // cv))
-                if len(folds_class_center) != cv:
+                folds_class_center = list(chunks(patient_class_center, len(patient_class_center) // div if len(patient_class_center) // div > 0 else 1))
+                if len(folds_class_center) != div:
+                    for sample in folds_class_center[-1]:
+                        i = random.randint(0, div)
+                        folds_class_center[i].append(sample)
                     del folds_class_center[-1]
-                for i in range(cv):
-                    folds[i] = folds[i] + folds_class_center[i]
+                if len(folds_class_center) < div:
+                    for sample in range(len(folds_class_center)):
+                        i = random.randint(0, div)
+                        folds[i] = folds[i] + folds_class_center[sample]
 
-                patient_class = [str(img) + " "+c+"\n" for img in db.index[db[label_col] == c].to_list()]
+                else:
+                    for i in range(div):
+                        folds[i] = folds[i] + folds_class_center[i]
+
         """
         # randomize
         random.seed(0)
@@ -273,7 +297,7 @@ def ValidationCreation():
                 file.write(str(row) if dataset_name=='BX' else row)
 
         # Shift folds by one
-        folds = rotate(folds, 1)
+        folds = rotate(folds, div//cv)
 
 
 
