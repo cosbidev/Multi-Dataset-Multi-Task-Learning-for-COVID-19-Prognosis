@@ -1,4 +1,5 @@
 import argparse
+import gc
 import glob
 import itertools
 import shutil
@@ -27,6 +28,8 @@ def main():
     parser.add_argument("--cfg_file", help="Number of folder", type=str)
     parser.add_argument("--model_name", help="model_name")
     parser.add_argument("--id_exp", help="seed", default=1)
+    parser.add_argument("--structure", help="structure of the BX module")
+    parser.add_argument("--release", help="Fold directory", default='2')
     parser.add_argument("--checkpointer", "-c", help="seed", action='store_true')
     args = parser.parse_args()
 
@@ -43,24 +46,53 @@ def main():
     cfg = EasyDict(cfg)
     # Parameters
     batch_size = cfg['trainer']['batch_size']
+    cfg['model']['structure'] = args.structure
+
     # Datasets configs
     morbidity_cfg = cfg.data.modes.morbidity
     severity_cfg = cfg.data.modes.severity
 
     # BACKBONE
     model_name = args.model_name
+    # APPLY THIS MODIFICATION
+    cv = cfg['data']['cv']
+    # APPLY THIS MODIFICATIONS
+    # 1) STRUCTURE MODIFICATIONS
+    if args.structure == 'brixia_Lung' or args.structure == 'brixia_Global':
+        cfg['model']['regression_type'] = 'consistent'
+        cfg['trainer']['loss_2'] = 'brixia'
+    else:
+        cfg['model']['regression_type'] = 'area'
+        cfg['trainer']['loss_2'] = 'mse'
+    # 2 ) RELEASE MODIFICATIONS
+    if args.release:
+        if args.release == '3':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF123.xlsx")
+            fold_dir = str(f"data/processed/AFC/{str(cv) if 'loco' not in str(cv).lower() else 'loCo'}")
+            name_release = '3release'
+        elif args.release == '2':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF12.xlsx")
+            fold_dir = str(f"data/processed/AFC_2R/{str(cv) if 'loco' not in str(cv).lower() else 'loCo'}")
+            name_release = '2release'
+        elif args.release == '1':
+            box_file = str("data/AIforCOVID/processed/box_data_AXF1.xlsx")
+            fold_dir = str(f"data/processed/AFC_1R/{str(cv) if 'loco' not in str(cv).lower() else 'loCo'}")
+            name_release = '1release'
+        cfg['data']['modes']['morbidity']['img']['fold_dir'] = fold_dir
+        cfg['data']['modes']['morbidity']['img']['box_dir'] = box_file
+    print('_______ DATA PATHS _______')
+    print(' ----------| Fold directory: ', cfg['data']['modes']['morbidity']['img']['fold_dir'])
+    print(' ----------| Box directory: ',  cfg['data']['modes']['morbidity']['img']['box_dir'])
+
+
+
 
     steps = ['train', 'val', 'test']
-    cv = cfg['data']['cv']
 
     # Data config
     data_cfg = cfg['data']
     CV = '_' + str(cfg['data']['cv'])
-    if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        Batch = f'_Batch{batch_size // torch.cuda.device_count()}'
-    else:
-        Batch = f'_Batch{batch_size}'
+    Batch = f'_Batch{batch_size}'
 
     # Preprocessing config
     CLAHE = '_Clahe' if data_cfg['preprocess']['clahe'] else ''
@@ -88,20 +120,26 @@ def main():
     device = torch.device(cfg['device']['cuda_device'] if torch.cuda.is_available() else "cpu")
     num_workers = 0 if device.type == "cpu" else cfg['device']['gpu_num_workers']
     print(device)
+    print(device)
     # Directories
-    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}'
+    cfg['exp_name'] = cfg['exp_name'] + f'_{args.id_exp}' + f'_{name_release}' + f'_{args.structure}'
     cfg['data']['model_dir'] = os.path.join(cfg['data']['model_dir'], cfg['exp_name'])  # folder to save trained model
     cfg['data']['report_dir'] = os.path.join(cfg['data']['report_dir'], cfg['exp_name'])
 
-    model_dir = os.path.join(cfg['data']['model_dir'], exp_name, model_name)  # folder to save model
+    # Create directories
+    model_dir = os.path.join(cfg['root'],cfg['data']['model_dir'],
+                             exp_name,
+                             model_name)  # folder to save model
     print(' ----------| Model directory: ', model_dir)
-    if not args.checkpointer and os.path.exists(model_dir):
+    if os.path.exists(model_dir) and not args.checkpointer:
         shutil.rmtree(model_dir)
-
     mkdir(model_dir)
-    report_dir = os.path.join(cfg['data']['report_dir'], exp_name, model_name)  # folder to save results
+
+    report_dir = os.path.join(cfg['root'],cfg['data']['report_dir'],
+                             exp_name,
+                             model_name)
     print(' ----------| Report directory: ', report_dir)
-    if not args.checkpointer and os.path.exists(report_dir):
+    if os.path.exists(report_dir) and not args.checkpointer:
         shutil.rmtree(report_dir)
     mkdir(report_dir)
 
@@ -126,8 +164,19 @@ def main():
     # 1) TEST MORBIDITY
     final_results_test_M = pd.DataFrame(columns=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC Score'])
     # 2) TEST SEVERITY
-    final_results_test_S = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
-                                                 'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+    """    final_results_test_S = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
+                                                 'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])"""
+
+    # 2) TEST
+
+    if cfg['model']['structure'] == 'brixia_Lung':
+        final_results_test_S = pd.DataFrame(columns=['Accuracy_LL', 'Precision_LL', 'Recall_LL', 'F1 Score_LL', 'Accuracy_RR', 'Precision_RR', 'Recall_RR', 'F1 Score_RR'])
+    elif cfg['model']['structure'] == 'brixia_Global':
+        final_results_test_S = pd.DataFrame(columns=['Accuracy_G', 'Precision_G', 'Recall_G', 'F1 Score_G'])
+    else:
+        final_results_test_S = pd.DataFrame(columns=['Accuracy L1', 'Accuracy Exp', 'Accuracy Squared', 'Acc_G',
+                                                   'Acc_LR', 'Acc_LL', 'LL_L1', 'RL_L1', 'G_L1', 'LL_CC', 'RL_CC', 'G_CC'])
+
     for fold, fold_data in fold_grid.items():
 
         string_fold = '-----------| Fold ' + str(fold) + ' |----------'
@@ -146,32 +195,26 @@ def main():
         if os.path.exists(test_results_by_patient):
             shutil.rmtree(test_results_by_patient)
         mkdir(test_results_by_patient)
-
         # Data
 
         if is_debug():
-            fold_data['train'] = fold_data['train'][740:1040:7]
-            fold_data['val'] = fold_data['val'][113:413:7]
-            fold_data['test'] = fold_data['test'][113:413:7]
+            fold_data['train'] = fold_data['train'][740:1040]
+            fold_data['val'] = fold_data['val'][113:413]
+            fold_data['test'] = fold_data['test'][113:413]
 
         # ------------------- DATA -------------------
         if True:
-            datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg) for step in steps}
+
+            steps = ['train', 'val']
+            datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg, cache_prop=1) for step in steps}
             for step in steps:
                 print(f'{step} dataset size: {len(datasets[step])}')
                 datasets[step].set_normalize_strategy(cfg['trainer']['normalizer'])
             # ------------------- Separate Loaders M and S-------------------
             subset_selector = lambda step, class_d: torch.utils.data.Subset(datasets[step], datasets[step].data[datasets[step].data['dataset_class'] == class_d].index.to_list())
-            data_loaders_AFC = {
-                'val': torch.utils.data.DataLoader(subset_selector('val', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                'test': torch.utils.data.DataLoader(subset_selector('test', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
-            data_loaders_BX = {
-                'val': torch.utils.data.DataLoader(subset_selector('val', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                'test': torch.utils.data.DataLoader(subset_selector('test', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
             # MULTITASK LOADERS
             data_loaders = {'train': torch.utils.data.DataLoader(datasets['train'], batch_size=batch_size, shuffle=True, num_workers=num_workers, worker_init_fn=seed_worker),
-                            'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
-                            'test': torch.utils.data.DataLoader(datasets['test'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+                            'val': torch.utils.data.DataLoader(datasets['val'], batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
             idx_to_class = datasets['train'].m_idx_to_class
         # ------------------- MODEL -------------------
 
@@ -182,10 +225,16 @@ def main():
 
             task = {'AFC': 'morbidity', 'BX': 'severity'}
 
-            selector_exp_folder = {5: lambda name_dataset, id_: f'./models/{name_dataset}/5/{task[name_dataset]}_singletask_{id_}/','loCo': lambda name_dataset, id_: f'./models/{name_dataset}/loCo/{task[name_dataset]}_singletask_{id_}/',}
+            selector_exp_folder = {
+                5: lambda name_dataset, id_: f'{cfg["root"] if not is_debug() else "."}/models/{name_dataset}/5/{task[name_dataset]}_singletask_{id_}/',
+                'loCo': lambda name_dataset, id_: f'{cfg["root"] if not is_debug() else "."}/models/{name_dataset}/loCo/{task[name_dataset]}_singletask_{id_}/',}
 
-            id_AFC = ids_experiment_to_load[0]
-            id_BX = ids_experiment_to_load[1]
+
+            # Morbidity Experiment Name
+            id_AFC = ids_experiment_to_load[0] + f'_{name_release}' if not is_debug() else ids_experiment_to_load[0]
+            id_BX = ids_experiment_to_load[1] + f'_{cfg["model"]["structure"]}' if not is_debug() else ids_experiment_to_load[1]
+
+
             cv_option_loading = 'loCo' if 'loco' in str(cv_option).lower() else cv_option
             exp_folder_morbidity = selector_exp_folder[cv_option_loading](name_dataset='AFC', id_=id_AFC)
             exp_folder_severtity = selector_exp_folder[cv_option_loading](name_dataset='BX', id_=id_BX)
@@ -241,8 +290,8 @@ def main():
 
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            model.activate_Head_training_module()
             model = nn.DataParallel(model, [0, 1])
+
 
         # Checkpointer
         model_trained = False
@@ -282,7 +331,7 @@ def main():
 
             # Train model
 
-            model, history = train_MultiTask(model=model,
+            model, history, _ = train_MultiTask(model=model,
                                              model_file_name=f'{model_cfg.head}_{model_name}',
                                              dataloaders=data_loaders,
                                              cfg=cfg,
@@ -299,8 +348,25 @@ def main():
 
         loss = IdentityMultiHeadLoss(cfg=cfg)
         # ------------------- TEST -------------------
-        # MORBIDITY TEST EVALUATION
+        #   ***********    MORBIDITY TEST EVALUATION   ***********
         # Evaluate the model on all the test data
+        #DATASETS
+
+        del datasets
+        gc.collect()
+        torch.cuda.empty_cache()
+        steps = ['val', 'test']
+
+        datasets = {step: MultiTaskDataset(data=fold_data[step], cfg_morbidity=morbidity_cfg, cfg_severity=severity_cfg, step=step, cfg=cfg) for step in steps}
+        subset_selector = lambda step, class_d: torch.utils.data.Subset(datasets[step], datasets[step].data[datasets[step].data['dataset_class'] == class_d].index.to_list())
+
+        data_loaders_AFC = {
+            'val': torch.utils.data.DataLoader(subset_selector('val', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+            'test': torch.utils.data.DataLoader(subset_selector('test', 'AFC'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+        data_loaders_BX = {
+            'val': torch.utils.data.DataLoader(subset_selector('val', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker),
+            'test': torch.utils.data.DataLoader(subset_selector('test', 'BX'), batch_size=batch_size, shuffle=False, num_workers=num_workers, worker_init_fn=seed_worker)}
+
         results_test_by_image, results_classes_test, common_metrics_test = evaluate_morbidity(
             model=model,
             test_loader=data_loaders_AFC['test'],
@@ -323,7 +389,7 @@ def main():
                                    report_path=test_results_by_patient,
                                    optional_Dataset='AFC'))
 
-        # SEVERITY TEST EVALUATION
+        # *********** SEVERITY TEST EVALUATION ***********
         # Evaluate the model on all the test data
         metrics_test, loss_test, results_metrics_resume_test, results_for_images_test = \
             evaluate_regression(model=model,
@@ -332,7 +398,6 @@ def main():
                                 device=device,
                                 regression_type=cfg['model']['regression_type'],
                                 cfg=cfg)
-
         final_results_test_S = (
             compute_report_metrics(final_report_folds=final_results_test_S,
                                    metrics_report=results_metrics_resume_test,

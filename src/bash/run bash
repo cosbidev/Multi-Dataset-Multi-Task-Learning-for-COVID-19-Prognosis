@@ -1,0 +1,12 @@
+bash create_final_report.sh -m multi -i MULTI_1release_brixia_Global -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_2release_brixia_Global -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_3release_brixia_Global -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_1release_brixia_Lung -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_2release_brixia_Lung -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_3release_brixia_Lung -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_1release_regression -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_2release_regression -s parallel -d data_external
+bash create_final_report.sh -m multi -i MULTI_3release_regression -s parallel -d data_external
+bash create_final_report.sh -m morbidity -i BASELINE_1release -s none -d data_external
+bash create_final_report.sh -m morbidity -i BASELINE_2release -s none -d data_external
+bash create_final_report.sh -m morbidity -i BASELINE_3release -s none -d data_external

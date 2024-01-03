@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 
+
 class Logger(object):
     """Redirect stderr to stdout, optionally print stdout to a file, and optionally force flushing on both stdout and the file."""
 

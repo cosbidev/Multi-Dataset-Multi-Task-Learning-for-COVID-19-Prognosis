@@ -1,9 +1,9 @@
-/data/BRIXIA/
-/data/COHEN/
-/data/AIforCOVID/
+
 /weights/alignment/
 /weights/segmentation_afc/
 /reports/
 /models/
 /weights/chestXnet/
 /weights/
+/data/
+/data/processed/

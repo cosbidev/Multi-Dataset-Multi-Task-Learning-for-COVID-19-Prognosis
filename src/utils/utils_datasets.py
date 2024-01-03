@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from skimage import exposure, filters
 
+
 def load_image(filename, target_size=512):
     """
     Load and resize a grayscale image from file

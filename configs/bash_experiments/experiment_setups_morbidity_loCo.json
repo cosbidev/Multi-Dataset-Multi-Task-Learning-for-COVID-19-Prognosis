@@ -1,14 +1,10 @@
 [
-  {
-    "config_file" : "afc_config_singletask_Masked_loCo.yaml",
-    "name" : "loCo",
-    "fold" : "loCo",
-    "models": "['densenet161']"
-  },
-  {
+    {
     "config_file" : "afc_config_singletask_loCo.yaml",
     "name" : "loCo",
     "fold" : "loCo",
-    "models": "['densenet161']"
+    "models": "['mobilenet_v2']",
+    "structure": "none",
+    "release": 1
   }
 ]

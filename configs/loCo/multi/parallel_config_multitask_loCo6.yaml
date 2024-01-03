@@ -34,7 +34,7 @@ data:
         - D
         - E
         - F
-  img_dim: 128 # resize shape (square)
+  img_dim: 256 # resize shape (square)
   preprocess:
     clahe: False
     filter: False

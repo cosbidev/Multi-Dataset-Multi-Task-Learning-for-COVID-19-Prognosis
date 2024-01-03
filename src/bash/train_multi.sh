@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-#SBATCH -A NAISS2023-5-274  -p alvis
-#SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-12:00:00
+#SBATCH -A NAISS2023-5-493  -p alvis
+#SBATCH -N 1 --gpus-per-node=A40:2
+#SBATCH -t 1-23:00:00
 # Output files
-
-
 #SBATCH --error=job_%J.err
 #SBATCH --output=out_%J.out
 # Mail me
@@ -18,8 +16,7 @@ echo  "cfg : $config_dir", "with model: $model_name"
 cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/MultiObjective_BRIXIA-AIforCOVID/covid-env || exit
 source bin/activate
 
-
-# Load modules
+# Load modulesxw
 #module purge
 #module load CUDA/11.3.1
 #module load torchvision/0.12.0-foss-2021a-PyTorch-1.11.0-CUDA-11.3.1
@@ -34,8 +31,12 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 config=$config_dir
 model=$model_name
 id_exp=$id_exp
+structure=$structure
+release=$release
+
+
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_MultiObjectiveModel.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp}
+python src/models/train_MultiObjectiveModel.py --model_name ${model} --release ${release} --structure ${structure} --cfg_file ${config} --id_exp ${id_exp}
 # Deactivate venv
 deactivate

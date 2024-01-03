@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import matplotlib.ticker as ticker
 
 def plot_test_results(test_results, plot_test_dir):
     # Test results Loss function
@@ -59,7 +60,147 @@ def plot_training_multi(history, plot_training_dir):
     plt.close()
 
 
-def plot_regression(history, plot_training_dir):
+
+def plot_training_multi_cl(data_history,  data,  data_classes, plot_curriculum_dir):
+    # Let's create a combined bar plot where the x-axis will represent each group and
+    # the y-axis will represent the accuracy for each group with separate bars for overall, 'MILD', and 'SEVERE' accuracies.
+
+    # First, we need to prepare the data. We will calculate the mean accuracy for each group for overall, 'MILD', and 'SEVERE'.
+    # This will align the data so that each group has an entry for each type of accuracy.
+
+    # Calculate mean accuracies for each group
+    overall_accuracy_mean = data.groupby('group')['Accuracy'].mean()
+    overall_accuracy_std = data.groupby('group')['Accuracy'].std()
+    # MILD CLASS
+    mild_accuracy_mean = data_classes[data_classes['class'] == 'MILD'].groupby('group')['top1'].mean()
+    mild_accuracy_std = data_classes[data_classes['class'] == 'MILD'].groupby('group')['top1'].std()
+
+    # SEVERE CLASS
+    severe_accuracy_mean = data_classes[data_classes['class'] == 'SEVERE'].groupby('group')['top1'].mean()
+    severe_accuracy_std = data_classes[data_classes['class'] == 'SEVERE'].groupby('group')['top1'].std()
+
+
+    dict_encoded = data.loc[:, ['step', 'group']].to_dict()['step']
+    # Ensure that we have a matching index for all dataframes before plotting
+    overall_accuracy_mean = overall_accuracy_mean.reindex(mild_accuracy_mean.index).fillna(0)
+    overall_accuracy_std = overall_accuracy_std.reindex(mild_accuracy_mean.index).fillna(0)
+    severe_accuracy_mean = severe_accuracy_mean.reindex(mild_accuracy_mean.index).fillna(0)
+    severe_accuracy_std = severe_accuracy_std.reindex(mild_accuracy_mean.index).fillna(0)
+
+    # Define the position of the bars for each group
+    fig, ax = plt.subplots(figsize=(15, 10))
+
+    # The positions of the groups on the x-axis
+    group_positions = np.arange(len(overall_accuracy_mean))
+
+    # Interpolate the points with a line for each accuracy type
+
+    ax.errorbar(group_positions, overall_accuracy_mean, yerr=overall_accuracy_std, color='blue', marker='^', markersize=15, label='Overall Accuracy', linestyle='-', zorder=3)
+
+    ax.errorbar(group_positions, mild_accuracy_mean, yerr=mild_accuracy_std, color='orange', marker='s', markersize=10, label='MILD Accuracy', linestyle='-.', zorder=2)
+
+    ax.errorbar(group_positions, severe_accuracy_mean, yerr=severe_accuracy_std, color='green', marker='o', markersize=10, label='SEVERE Accuracy', linestyle='-.', zorder=1)
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xlabel('Group', fontsize=15)
+    ax.set_ylabel('Accuracy', fontsize=15)
+    ax.set_title('Accuracy for Overall, MILD, and SEVERE by Group with Interpolated Lines', fontsize=20)
+    ax.set_xticks(group_positions)
+    start, end = ax.get_ylim()
+    ax.yaxis.set_ticks(np.arange(start, end, 5))
+    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.1f'))
+
+    ax.set_xticklabels(overall_accuracy_mean.index.map(dict_encoded), rotation=20)
+    ax.grid()
+    ax.set_ylim(0, 100)  # Assuming accuracy is a percentage
+    ax.legend()
+
+    # Save Figure
+    plt.savefig(os.path.join(plot_curriculum_dir, "ACC_over_ITERATIONS_TEST.png"))
+
+    # Set up the figure for multiple subplots, assuming we have a reasonable number of groups
+    groups = data_history['group'].unique()
+
+    colors = ['salmon', 'skyblue', 'firebrick', 'darkblue']
+
+    group_colors = ['limegreen', 'violet', 'purple', 'magenta', 'yellow', 'orange']
+    dict_convert = {i: name for i, name in enumerate(data_classes['step'].unique())}
+    # Set up the figure for one horizontal plot containing all groups
+
+    # Plotting training and validation accuracies for each group on the same axis
+    for fold in data_history['fold'].unique():
+
+        data_history_fold = data_history[data_history['fold'] == fold].reset_index(drop=True)
+        fig, ax = plt.subplots(figsize=(15, 5))
+        for i, group in enumerate(groups):
+            group_data = data_history_fold[data_history_fold['group'] == group]
+
+            # Overall Accuracies
+            ax.plot(group_data.index + 1, group_data['train_loss_S'], label=f'Training Loss Severity', marker='o', color=colors[0])
+            ax.plot(group_data.index + 1, group_data['val_loss_S'], label=f'Validation Loss Severity', marker='s', color=colors[1])
+
+            ax.plot(group_data.index + 1, group_data['train_loss_M'], label=f'Training Loss Morbidity', marker='o', color=colors[2])
+            ax.plot(group_data.index + 1, group_data['val_loss_M'], label=f'Validation Loss Morbidity', marker='s', color=colors[3])
+
+            plt.axvline(x=max(group_data.index) + 1, color=group_colors[i], linestyle='-.', label=dict_convert[group], linewidth=4)
+        # Set the title and labels
+        ax.set_title('Training vs Validation Losses for all Iterations and AFC/BX losses-- FOLD: {}'.format(fold))
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Losses')
+
+        # Ensure the x-axis ticks represent epochs properly
+        # Get all unique epochs across all groups to set x-ticks accurately
+        start, end = ax.get_ylim()
+        ax.yaxis.set_ticks(np.arange(start, end, 0.50))
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.1f'))
+
+        # Shrink current axis by 20% to fit the legend outside of the plot
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        plt.grid()
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys(), loc='center left', bbox_to_anchor=(1, 0.5))
+
+        # Save Figure
+        plt.savefig(os.path.join(plot_curriculum_dir, f"LOSSES_over_ITERATIONS_train_fold_{fold}.png"))
+
+
+        group_colors = ['limegreen', 'violet', 'purple', 'magenta', 'yellow', 'orange']
+        dict_convert = {i: name for i, name in enumerate(data_classes['step'].unique())}
+        # Set up the figure for one horizontal plot containing all groups
+        fig, ax = plt.subplots(figsize=(15, 5))
+        # Plotting training and validation accuracies for each group on the same axis
+        for i, group in enumerate(groups):
+            group_data = data_history_fold[data_history_fold['group'] == group]
+
+            # Overall Accuracies
+            ax.plot(group_data.index + 1, group_data['train_acc'], label=f'Training Accuracy', marker='o',color=colors[0])
+            ax.plot(group_data.index + 1, group_data['val_acc'], label=f'Validation Accuracy', marker='s',color=colors[1])
+            plt.axvline(x=max(group_data.index) + 1, color=group_colors[i], linestyle='-.', label=dict_convert[group])
+        # Set the title and labels
+        ax.set_title('Training vs Validation Accuracy for All Groups -- FOLD: {}'.format(fold))
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Accuracy')
+
+        # Ensure the x-axis ticks represent epochs properly
+        # Get all unique epochs across all groups to set x-ticks accurately
+
+        # Shrink current axis by 20% to fit the legend outside of the plot
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        plt.grid()
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys(), loc='center left', bbox_to_anchor=(1, 0.5))
+
+        plt.savefig(os.path.join(plot_curriculum_dir, f"ACC_over_ITERATIONS_train_fold_{fold}.png"))
+
+
+
+def plot_regression(history, plot_training_dir, name_of_accuracies = ['LL', 'RL']):
     # Training results Loss function
     colors = ['r', 'b']
     plt.figure(figsize=(8, 6))
@@ -67,14 +208,14 @@ def plot_regression(history, plot_training_dir):
         plt.plot(history[c], label=c, color=colors[i])
     plt.legend()
     plt.xlabel('Epoch')
-    plt.ylabel('MSE error on Global Score')
+    plt.ylabel('BCE error on Global Score')
     plt.title('Training and Validation Losses')
     plt.savefig(os.path.join(plot_training_dir, "Loss"))
     plt.close()
 
-    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
+    fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(15, 10))
     list_axis = axs.tolist()
-    name_of_accuracies = ['G', 'LL', 'RL']
+    name_of_accuracies = name_of_accuracies
     for name_acc, ax in zip(name_of_accuracies, list_axis):
         for i, c in enumerate(['train_acc_' + name_acc, 'val_acc_' + name_acc]):
             ax.plot(history[c], label=c, color=colors[i])

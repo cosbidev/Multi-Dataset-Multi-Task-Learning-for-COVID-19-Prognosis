@@ -1,7 +1,8 @@
 import itertools
 from collections import OrderedDict
 
-#import timm
+from sklearn.metrics import classification_report
+import timm
 import torch
 import torch.nn as nn
 import numpy as np
@@ -201,7 +202,7 @@ def get_backbone(model_name=''):
         model = timm.create_model(model_name, pretrained=True)
         in_features = model.classifier.in_features
     elif "vit" in model_name:
-        model = timm.create_model(model_name, pretrained=True)
+        model = timm.create_model(model_name, pretrained=False)
         in_features = model.head.in_features
     else:
         raise ValueError("Invalid model name")
@@ -213,7 +214,7 @@ def get_backbone(model_name=''):
 def update_learning_rate(optimizer, scheduler, metric=None):
     """Update learning rates for all the networks; called at the end of every epoch"""
     old_lr = optimizer.param_groups[0]['lr']
-    print('Metric Value', metric)
+
     scheduler.step(float(metric))
     lr = optimizer.param_groups[0]['lr']
     print('optimizer: %.7s  --learning rate %.7f -> %.7f' % (
@@ -277,72 +278,44 @@ def get_metrics_classification_severity(y_true, y_pred, regression_type='area'):
         acc_area_5 = sum(list(y_sampling_pred[:, 4] == y_true[:, 4])) / y_true.shape[0]
         acc_area_6 = sum(list(y_sampling_pred[:, 5] == y_true[:, 5])) / y_true.shape[0]
         # Accuracy boolean for score
-        acc_all_ = {'acc_boolean_accuracy': accuracy_global_accuracy,
-                    'acc_lung_r': acc_lung_r,
-                    'acc_lung_l': acc_lung_l,
-                    'acc_a': acc_area_1,
-                    'acc_b': acc_area_2,
-                    'acc_c': acc_area_3,
-                    'acc_d': acc_area_4,
-                    'acc_e': acc_area_5,
-                    'acc_f': acc_area_6
-                    }
-        return (accuracy_distance_l1,
-                accuracy_distance_exp,
-                accuracy_distance_squared,
-                y_sampling_pred,
-                acc_all_)
+        metrics = {'accuracy_l1': accuracy_distance_l1,
+                   'accuracy_exp': accuracy_distance_exp,
+                   'accuracy_squared': accuracy_distance_squared,
+                   'y_sampling_pred': y_sampling_pred,
+                   'acc_boolean_accuracy': accuracy_global_accuracy,
+                   'acc_lung_r': acc_lung_r,
+                   'acc_lung_l': acc_lung_l,
+                   'acc_a': acc_area_1,
+                   'acc_b': acc_area_2,
+                   'acc_c': acc_area_3,
+                   'acc_d': acc_area_4,
+                   'acc_e': acc_area_5,
+                   'acc_f': acc_area_6
+                   }
+        return metrics
     elif regression_type == 'consistent':
-        score_pred_RR = np.sum(y_pred[:, :3], axis=1)
-        score_pred_LL = np.sum(y_pred[:, 3:6], axis=1)
-        score_pred_G = np.sum(y_pred, axis=1)
 
-        accuracy_RR = 100 * (np.sum(y_true[:, 6] == score_pred_RR) / y_true.shape[0])
-        accuracy_LL = 100 * (np.sum(y_true[:, 7] == score_pred_LL) / y_true.shape[0])
-        accuracy_G = 100 * (np.sum(y_true[:, 8] == score_pred_G) / y_true.shape[0])
+        # All the performance are computed respect the new task
 
-        max_value_l1 = np.sum(y_true[:, -1])
-        max_value_exp = np.sum([np.sum([np.exp(y_true[row, i]) for i in range(6)]) for row in range(y_true.shape[0])])
-        max_value_s = np.sum([np.sum([y_true[row, i] ** 2 for i in range(6)]) for row in range(y_true.shape[0])])
-        min_value = 0
+        if y_pred.shape[1] == 2:
 
-        errors_l1 = [np.sum([np.abs(y_true[row, column] - y_pred[row, column]) for column in range(6)]) for row in range(y_true.shape[0])]
-        errors_exp = [np.sum([np.exp(np.abs(y_true[row, column] - y_pred[row, column])) for column in range(6)]) for row in range(y_true.shape[0])]
-        errors_squared = [np.sum([(y_true[row, column] - y_pred[row, column]) ** 2 for column in range(6)]) for row in range(y_true.shape[0])]
+            score_pred_LL = y_pred[:, 0]
 
-        # ERRORS COMPUTATION:
-        # distance L1 between predictions and true values for each area
-        Normalized_error_l1 = (np.sum(errors_l1) - min_value) / (max_value_l1 - min_value)
-        # distance L2 between predictions and true values for each area
-        Normalized_error_squared = (np.sum(errors_squared) - min_value) / (max_value_s - min_value)
-        # distance exp between predictions and true values for each area
-        Normalized_error_exp = (np.sum(errors_exp) - min_value) / (max_value_exp - min_value)
-        # ACCURACY COMPUTATION:
-        # accuracy distance exp between predictions and true values for each area
-        accuracy_distance_exp = 1 - Normalized_error_exp
-        # accuracy distance L1 between predictions and true values for each area
-        accuracy_distance_l1 = 1 - Normalized_error_l1
-        # accuracy distance L2 between predictions and true values for each area
-        accuracy_distance_squared = 1 - Normalized_error_squared
+            score_pred_RR = y_pred[:, 1]
 
-        areas_dict = {'acc_a': 0.0,
-                      'acc_b': 0.0,
-                      'acc_c': 0.0,
-                      'acc_d': 0.0,
-                      'acc_e': 0.0,
-                      'acc_f': 0.0}
+            classification_report_LL = classification_report(y_true[:, 0], score_pred_LL, output_dict=True)
+            classification_report_RR = classification_report(y_true[:, 1], score_pred_RR, output_dict=True)
+        else:
 
-        for i, area_key in zip(range(y_pred.shape[1]), areas_dict.keys()):
-            areas_dict[area_key] = 100 * (np.sum(y_true[:, i] == y_pred[:, i]) / y_true.shape[0])
-        y_pred = np.concatenate((y_pred, score_pred_RR.reshape(-1, 1), score_pred_LL.reshape(-1, 1), score_pred_G.reshape(-1, 1)), axis=1)
-        return (accuracy_distance_l1,
-                accuracy_distance_exp,
-                accuracy_distance_squared,
-                y_pred,
-                {'acc_boolean_accuracy': accuracy_G,
-                 'acc_lung_r': accuracy_RR,
-                 'acc_lung_l': accuracy_LL,
-                 **areas_dict})
+            score_pred_G = y_pred[:, 0]
+
+            classification_report_G = classification_report(y_true[:, 0], score_pred_G, output_dict=True)
+
+            return {'report_G': classification_report_G}
+
+
+        return {'report_LL': classification_report_LL,
+                'report_RR': classification_report_RR}
 
 
 def get_metrics_regression(y_true, y_pred, regression_type='area'):
@@ -419,7 +392,6 @@ def get_metrics_regression(y_true, y_pred, regression_type='area'):
 
     return results.T
 
-
 def train_severity(model,
                    cfg,
                    criterion,
@@ -437,8 +409,16 @@ def train_severity(model,
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = 1e6
     best_epoch = 0
-    history = {'train_loss': [], 'val_loss': [], 'train_metrics': [], 'val_metrics': [],
-               'train_acc_G': [], 'val_acc_G': [], 'train_acc_RL': [], 'val_acc_RL': [], 'train_acc_LL': [], 'val_acc_LL': [],
+    history = {'train_loss': [],
+               'val_loss': [],
+               'train_metrics': [],
+               'val_metrics': [],
+               'train_acc_G': [],
+               'val_acc_G': [],
+               'train_acc_RL': [],
+               'val_acc_RL': [],
+               'train_acc_LL': [],
+               'val_acc_LL': [],
                'train_l1_acc': []} if regression_type == 'area' else {'train_loss': [], 'val_loss': [], 'train_acc_G': [], 'val_acc_G': [],
                                                                       'train_acc_RL': [], 'val_acc_RL': [], 'train_acc_LL': [], 'val_acc_LL': []}
 
@@ -492,9 +472,9 @@ def train_severity(model,
                             labels_consistent = labels
                             total_output = criterion(outputs, labels_consistent)
                             loss = total_output['total_loss']
-                            labels_predicted = total_output['labels_predicted']
-                            probs_predicted = total_output['probs_predicted']
-
+                            labels = total_output['encoded_labels']
+                            probs_predicted = total_output['probabilities_predicted']
+                            predicted_labels = total_output['predicted_labels']
                         # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
@@ -510,11 +490,11 @@ def train_severity(model,
                         # real_target = np.append(real_target, labels.cpu().detach().numpy())
                     elif regression_type == 'consistent':
                         if k == 0:
-                            output_predictions = labels_predicted.cpu().detach().numpy()
+                            output_predictions = predicted_labels.cpu().detach().numpy()
                             real_target = labels.cpu().detach().numpy()
                             probs_predictions = probs_predicted.cpu().detach().numpy()
                         else:
-                            output_predictions = np.concatenate((output_predictions, labels_predicted.cpu().detach().numpy()), 0)
+                            output_predictions = np.concatenate((output_predictions, predicted_labels.cpu().detach().numpy()), 0)
                             real_target = np.concatenate((real_target, labels.cpu().detach().numpy()), 0)
                             probs_predictions = np.concatenate((probs_predictions, probs_predicted.cpu().detach().numpy()), 0)
                         # real_target = np.append(real_target, labels.cpu().detach().numpy())
@@ -524,32 +504,51 @@ def train_severity(model,
                     pbar.update(inputs.shape[0])
 
             metrics_epoch = get_metrics_regression(real_target, output_predictions, regression_type=regression_type)
-            (_, _, _, _,
-             acc_all_) = get_metrics_classification_severity(real_target, output_predictions, regression_type=regression_type)
-            print('acc_all_', acc_all_)
-            print('metrics_epoch', metrics_epoch)
+            reports_metrics = get_metrics_classification_severity(real_target, output_predictions, regression_type=regression_type)
+
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
             print('{} Loss: {:.4f}'.format(phase, epoch_loss))
-            if phase == 'val':
-                val_loss = epoch_loss
-                update_learning_rate(optimizer=optimizer, scheduler=scheduler, metric=val_loss)
 
-            # update history
+            if cfg['model']['structure'] == 'brixia_Lung':
+                print('REPORT-LL: ', reports_metrics['report_LL']['weighted avg'])
+                print('REPORT-RR: ', reports_metrics['report_RR']['weighted avg'])
+                print('ACC-RR: ', reports_metrics['report_RR']['accuracy'], '\n ACC-LL: ', reports_metrics['report_LL']['accuracy'])
+            elif cfg['model']['structure'] == 'brixia_Global':
+                print('REPORT-G: ', reports_metrics['report_G']['weighted avg'])
+                print('ACC-G: ', reports_metrics['report_G']['accuracy'])
+
+
             if phase == 'train':
                 history['train_loss'].append(epoch_loss)
                 if regression_type == 'area':
                     history['train_metrics'].append(metrics_epoch)
-                history['train_acc_G'].append(acc_all_['acc_boolean_accuracy'])
-                history['train_acc_RL'].append(acc_all_['acc_lung_r'])
-                history['train_acc_LL'].append(acc_all_['acc_lung_l'])
+                    history['train_acc_G'].append(reports_metrics['acc_boolean_accuracy'])
+                    history['train_acc_RL'].append(reports_metrics['acc_lung_r'])
+                    history['train_acc_LL'].append(reports_metrics['acc_lung_l'])
+                else:
+                    if cfg['model']['structure'] == 'brixia_Lung':
+                        history['train_acc_RL'].append(reports_metrics['report_RR']['accuracy'])
+                        history['train_acc_LL'].append(reports_metrics['report_LL']['accuracy'])
+                    elif cfg['model']['structure'] == 'brixia_Global':
+                        history['train_acc_G'].append(reports_metrics['report_G']['accuracy'])
+            elif phase == 'val':
+                # Learning rate update
+                val_loss = epoch_loss
+                update_learning_rate(optimizer=optimizer, scheduler=scheduler, metric=val_loss)
 
-            else:
                 history['val_loss'].append(epoch_loss)
                 if regression_type == 'area':
                     history['val_metrics'].append(metrics_epoch)
-                history['val_acc_G'].append(acc_all_['acc_boolean_accuracy'])
-                history['val_acc_RL'].append(acc_all_['acc_lung_r'])
-                history['val_acc_LL'].append(acc_all_['acc_lung_l'])
+                    history['val_acc_G'].append(reports_metrics['acc_boolean_accuracy'])
+                    history['val_acc_RL'].append(reports_metrics['acc_lung_r'])
+                    history['val_acc_LL'].append(reports_metrics['acc_lung_l'])
+                else:
+                    if cfg['model']['structure'] == 'brixia_Lung':
+                        history['val_acc_RL'].append(reports_metrics['report_RR']['accuracy'])
+                        history['val_acc_LL'].append(reports_metrics['report_LL']['accuracy'])
+                    elif cfg['model']['structure'] == 'brixia_Global':
+                        history['train_acc_G'].append(reports_metrics['report_G']['accuracy'])
+
             # deep copy the model
             if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
@@ -599,7 +598,7 @@ def train_MultiTask(model,
                     max_epochs_stop=3,
                     save_model=True):
     since = time.time()
-
+    print('Noise added to the model')
     best_model_wts = copy.deepcopy(model.state_dict())
     best_epoch_accuracy = 0.0
     best_loss = 1e6
@@ -612,7 +611,6 @@ def train_MultiTask(model,
                'val_loss_M': [],
                'train_acc': [],
                'val_acc': []}
-
     epochs_no_improve = 0
     early_stop = False
     for epoch in range(num_epochs):
@@ -671,7 +669,8 @@ def train_MultiTask(model,
                         labels_BX = labels[BX_selector]
                         outputs_BX = Severity_head_outputs[BX_selector]
                         # Labels/Outputs AFC
-                        labels_AFC = labels[AFC_selector][:, :criterion.dim_1]
+
+                        labels_AFC = labels[AFC_selector][:, :criterion.dim_AFC_vector]
                         outputs_AFC = Morbidity_head_outputs[AFC_selector]
 
                         # Calculate predictions and Labels fgt for the Morbidity Task:
@@ -732,10 +731,10 @@ def train_MultiTask(model,
             # deep copy the model
             if epoch > cfg['trainer']['warmup_epochs']:
                 if phase == 'val':
-                    if epoch_loss_tot < best_loss:
+                    if epoch_loss_AFC < best_loss:
                         best_epoch = epoch
                         best_epoch_accuracy = epoch_acc
-                        best_loss = epoch_loss_tot
+                        best_loss = epoch_loss_AFC
                         best_model_wts = copy.deepcopy(model.state_dict())
                         epochs_no_improve = 0
                     else:
@@ -764,10 +763,7 @@ def train_MultiTask(model,
         # Format history
     history = pd.DataFrame.from_dict(history, orient='index').transpose()
 
-
-
-    return {'model': model, 'optimizer': optimizer, 'scheduler': scheduler, 'lr': optimizer.param_groups[0]['lr']}, history if 'curriculum' in cfg['trainer'].keys() else model, history
-
+    return model, history, {'best_loss': best_loss, 'best_acc': best_epoch_accuracy, 'best_epoch': best_epoch}
 
 
 def train_morbidity(model,
@@ -1089,16 +1085,18 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
                 filenames.extend([os.path.basename(file_).split('.dcm')[0] for file_ in file_name])
                 if isinstance(outputs, tuple):
                     outputs = outputs[1]
-                # This criterion calculate MSE over single areas: (MEAN-SQUARED ERROR)
+
                 if regression_type == 'area':
                     labels_single_areas = labels[:, :6]
                     loss = criterion(outputs, labels_single_areas)
                 elif regression_type == 'consistent':
+                    # This criterion calculate a custom loss function
                     labels_consistent = labels
                     total_output = criterion(outputs, labels_consistent)
                     loss = total_output['total_loss']
-                    labels_predicted = total_output['labels_predicted']
-                    probs_predicted = total_output['probs_predicted']
+                    labels = total_output['encoded_labels']
+                    probs_predicted = total_output['probabilities_predicted']
+                    predicted_labels = total_output['predicted_labels']
                 losses += loss.item() * inputs.size(0)
                 if regression_type == 'area':
                     if k == 0:
@@ -1110,11 +1108,11 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
                     # real_target = np.append(real_target, labels.cpu().detach().numpy())
                 elif regression_type == 'consistent':
                     if k == 0:
-                        output_predictions = labels_predicted.cpu().detach().numpy()
+                        output_predictions = predicted_labels.cpu().detach().numpy()
                         real_target = labels.cpu().detach().numpy()
                         probs_predictions = probs_predicted.cpu().detach().numpy()
                     else:
-                        output_predictions = np.concatenate((output_predictions, labels_predicted.cpu().detach().numpy()), 0)
+                        output_predictions = np.concatenate((output_predictions, predicted_labels.cpu().detach().numpy()), 0)
                         real_target = np.concatenate((real_target, labels.cpu().detach().numpy()), 0)
                         probs_predictions = np.concatenate((probs_predictions, probs_predicted.cpu().detach().numpy()), 0)
                 k += 1
@@ -1122,15 +1120,19 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
     # Calculate LOSS + Metrics
     loss_ = losses / len(test_loader.dataset)
     metrics_ = get_metrics_regression(real_target, output_predictions, regression_type=regression_type)
-    (accuracy_distance_l1,
-     accuracy_distance_exp,
-     accuracy_distance_squared,
-     y_sampling_pred,
-     acc_all_) = get_metrics_classification_severity(real_target, output_predictions, regression_type=regression_type)
+    metrics_report = get_metrics_classification_severity(real_target, output_predictions, regression_type=regression_type)
     if regression_type == 'area':
         # Save performances results
         metrics_to_add_CC = {keys + '_CC': values for keys, values in metrics_.loc['CC', ['LL', 'RL', 'G']].to_dict().items()}
         metrics_to_add_L1 = {keys + '_L1': values for keys, values in metrics_.loc['L1', ['LL', 'RL', 'G']].to_dict().items()}
+        accuracy_distance_l1 = metrics_report['accuracy_l1']
+        accuracy_distance_exp = metrics_report['accuracy_exp']
+        accuracy_distance_squared = metrics_report['accuracy_squared']
+        accuracy_global_accuracy = metrics_report['acc_boolean_accuracy']
+        acc_lung_r = metrics_report['acc_lung_r']
+        acc_lung_l = metrics_report['acc_lung_l']
+        y_sampling_pred = metrics_report['y_sampling_pred']
+
 
         results_metrics_resume = {
             'Accuracy L1': accuracy_distance_l1,
@@ -1139,11 +1141,11 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
 
             'Accuracy Squared': accuracy_distance_squared,
 
-            'Acc_G': acc_all_['acc_boolean_accuracy'],
+            'Acc_G': accuracy_global_accuracy,
 
-            'Acc_LR': acc_all_['acc_lung_r'],
+            'Acc_LR': acc_lung_r,
 
-            'Acc_LL': acc_all_['acc_lung_l'],
+            'Acc_LL': acc_lung_l,
 
             **metrics_to_add_L1,
             **metrics_to_add_CC
@@ -1160,32 +1162,42 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
                          'LL_pred': y_sampling_pred[:, -2],
                          'G_pred': y_sampling_pred[:, -1]}
     elif regression_type == 'consistent':
-        results_float = {'A_pred': output_predictions[:, 0],
-                         'B_pred': output_predictions[:, 1],
-                         'C_pred': output_predictions[:, 2],
-                         'D_pred': output_predictions[:, 3],
-                         'E_pred': output_predictions[:, 4],
-                         'F_pred': output_predictions[:, 5],
-                         'LR_pred': output_predictions[:, :3].sum(1),
-                         'LL_pred': output_predictions[:, :3].sum(1),
-                         'G_pred': output_predictions[:, :].sum(1)}
-        results_metrics_resume = {
-            'Accuracy L1': accuracy_distance_l1,
-            'Accuracy Exp': accuracy_distance_exp,
-            'Accuracy Squared': accuracy_distance_squared,
 
-            'Acc_G': acc_all_['acc_boolean_accuracy'],
 
-            'Acc_LR': acc_all_['acc_lung_r'],
 
-            'Acc_LL': acc_all_['acc_lung_l'],
-            'Acc_A': acc_all_['acc_a'],
-            'Acc_B': acc_all_['acc_b'],
-            'Acc_C': acc_all_['acc_c'],
-            'Acc_D': acc_all_['acc_d'],
-            'Acc_E': acc_all_['acc_e'],
-            'Acc_F': acc_all_['acc_f'],
-        }
+        if cfg['model']['structure'] == 'brixia_Lung':
+            results_float = {
+                             'LL_pred': output_predictions[:, 0],
+                             'LR_pred': output_predictions[:, 1],
+                             }
+
+            results_metrics_resume = {
+
+                'Accuracy_LL': metrics_report['report_LL']['accuracy'],
+                'Precision_LL': metrics_report['report_LL']['weighted avg']['precision'],
+                'Recall_LL': metrics_report['report_LL']['weighted avg']['recall'],
+                'F1 Score_LL': metrics_report['report_LL']['weighted avg']['f1-score'],
+
+                'Accuracy_RR': metrics_report['report_RR']['accuracy'],
+                'Precision_RR': metrics_report['report_RR']['weighted avg']['precision'],
+                'Recall_RR': metrics_report['report_RR']['weighted avg']['recall'],
+                'F1 Score_RR': metrics_report['report_RR']['weighted avg']['f1-score'],
+
+            }
+        elif cfg['model']['structure'] == 'brixia_Global':
+            results_float = {
+                             'G_pred': output_predictions[:, 0],
+                             }
+
+            results_metrics_resume = {
+
+                'Accuracy_G': metrics_report['report_G']['accuracy'],
+                'Precision_G': metrics_report['report_G']['weighted avg']['precision'],
+                'Recall_G': metrics_report['report_G']['weighted avg']['recall'],
+                'F1 Score_G': metrics_report['report_G']['weighted avg']['f1-score'],
+
+            }
+
     # Lets save each zone with a name
     labels = {key.split('_')[0] + 'y': list() for key in results_float.keys()}
     for row in range(real_target.shape[0]):
@@ -1198,13 +1210,16 @@ def evaluate_regression(model, test_loader, criterion, device, cfg, regression_t
     # COMMON KEYS
     list_common_keys = list(results_float.keys()) + list(labels.keys())
     # We have to alternate all the columns name and save all the information about all the prediction of the network
-    results_for_images = pd.DataFrame(columns=['Patient'] + list(itertools.chain(*[[list_common_keys[i], list_common_keys[i + 9]] for i in range(9)])))
+    results_for_images = pd.DataFrame(columns=['Patient'] + list(itertools.chain(*[[list_common_keys[i], list_common_keys[i + len(list_common_keys) // 2]] for i in range(len(
+        list_common_keys) // 2)])))
+
 
     new_info = pd.DataFrame({'Patient': filenames, **results_float, **labels})
     for row in new_info.iterrows():
         results_for_images.loc[len(results_for_images)] = dict(row[1])
 
     return metrics_, loss_, results_metrics_resume, results_for_images
+
 
 
 def evaluate_morbidity(model, test_loader, criterion, idx_to_class, device, cfg, topk=(1, 5)):
@@ -1459,13 +1474,13 @@ class SeverityModel(nn.Module):
         self.labels = cfg['data']['classes']
         self.class_to_id = {c: i for i, c in enumerate(self.labels)}
         # BACKBONE
-        self.backbone, in_features = get_backbone(backbone)
+        self.backbone, self.in_features = get_backbone(backbone)
         # HEAD CLASSIFICATION
         New_classification_Head = nn.Sequential(OrderedDict(
             [
                 ('dropout1', nn.Dropout(p=0.5, inplace=False)),
                 ('classification-Head',
-                 nn.Linear(in_features=in_features, out_features=len(self.labels)))]))
+                 nn.Linear(in_features=self.in_features, out_features=len(self.labels)))]))
         # HEAD CLASSIFICATION
         if 'squeezenet' in backbone:
             New_classification_Head = nn.Sequential(OrderedDict(
@@ -1490,55 +1505,46 @@ class SeverityModel(nn.Module):
 
             print('Loading pretrained model on ChestXNet, from: ', path_to_chestXnet_model)
             self.backbone.load_state_dict(adapted_dict, strict=False)
-        if cfg['model']['structure'] == 'brixia':
-            self.global_ = nn.Sequential(OrderedDict(
-                [('dropout_global', nn.Dropout(p=0.5, inplace=False)),
-                 ('relu_global', nn.ReLU()),
-                 ('linear_global', nn.Linear(in_features=in_features, out_features=128))]))
-            self.area_A_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_A', nn.ReLU()),
-                    ('area_A',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_B_output = nn.Sequential(OrderedDict(
-                [('ReLU_B', nn.ReLU()),
-                 ('area_B',
-                  nn.Linear(in_features=128, out_features=4))]))
-            self.area_C_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_C', nn.ReLU()),
-                    ('area_C',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_D_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_D', nn.ReLU()),
-                    ('area_D',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_E_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_E', nn.ReLU()),
-                    ('area_E',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_F_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_F', nn.ReLU()),
-                    ('area_F',
-                     nn.Linear(in_features=128, out_features=4))]))
+        if cfg['model']['structure'] == 'brixia_Lung':
+            # HEAD LUNGS CLASSIFIER
 
-            change_head(model=self.backbone, model_name=backbone, new_head=self.global_)
+            self.area_LungLeft_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_L', nn.ReLU()),
+                    ('drop_L', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_L',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+            self.area_LungRight_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_R', nn.ReLU()),
+                    ('drop_R', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_R',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+
+            change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
             for i, param in enumerate(list(self.backbone.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_A_output.parameters())):
+            for i, param in enumerate(list(self.area_LungLeft_output.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_B_output.parameters())):
+            for i, param in enumerate(list(self.area_LungRight_output.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_C_output.parameters())):
+        elif cfg['model']['structure'] == 'brixia_Global':
+            # HEAD GLOBAL CLASSIFIER
+
+            self.area_Global_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_L', nn.ReLU()),
+                    ('drop_L', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_L',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+
+            change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
+            for i, param in enumerate(list(self.backbone.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_D_output.parameters())):
-                param.requires_grad = True
-            for i, param in enumerate(list(self.area_E_output.parameters())):
-                param.requires_grad = True
-            for i, param in enumerate(list(self.area_F_output.parameters())):
+            for i, param in enumerate(list(self.area_Global_output.parameters())):
                 param.requires_grad = True
 
         else:
@@ -1551,17 +1557,18 @@ class SeverityModel(nn.Module):
             freeze_backbone(model=self, perc=0.5)"""
 
     def forward(self, x):
-        if self.config['model']['structure'] == 'brixia':
+        if self.config['model']['structure'] == 'brixia_Lung':
 
             # Areas
             out_global_memory = self.backbone(x)
-            out_area_A = self.area_A_output(out_global_memory)[:, None, :]
-            out_area_B = self.area_B_output(out_global_memory)[:, None, :]
-            out_area_C = self.area_C_output(out_global_memory)[:, None, :]
-            out_area_D = self.area_D_output(out_global_memory)[:, None, :]
-            out_area_E = self.area_E_output(out_global_memory)[:, None, :]
-            out_area_F = self.area_F_output(out_global_memory)[:, None, :]
-            return torch.cat((out_area_A, out_area_B, out_area_C, out_area_D, out_area_E, out_area_F), dim=1)
+            out_area_LL = self.area_LungLeft_output(out_global_memory)[:, None, :]
+            out_area_RL = self.area_LungRight_output(out_global_memory)[:, None, :]
+
+            return torch.cat((out_area_LL, out_area_RL), dim=1)
+        elif self.config['model']['structure'] == 'brixia_Global':
+            out_global_memory = self.backbone(x)
+            return self.area_Global_output(out_global_memory)[:, None, :]
+
         else:
             x = self.backbone(x)
             return x
@@ -1578,8 +1585,6 @@ def get_MultiTaskModel(kind='parallel', backbone='', cfg=None, device=None, *arg
     # TODO Multitask model
     if kind == 'parallel':
         return ParallelMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
-    if kind == 'serial':
-        return SerialMultiObjective(cfg=cfg, backbone=backbone, device=device, *args, **kwargs)
 
 
 def MSE_loss(outputs, labels):
@@ -1598,47 +1603,81 @@ class BrixiaCustomLoss(torch.nn.Module):
         self.one_hot = {0: [1, 0, 0, 0], 1: [0, 1, 0, 0], 2: [0, 0, 1, 0], 3: [0, 0, 0, 1]}
         self.reverse_one_hot = {tuple(v): k for k, v in self.one_hot.items()}
 
-    def get_one_hot(self, x):
+    def get_one_hot(self, x, labels_complete):
         output_tensor = torch.zeros([x.shape[0], 4])
-        for value in range(x.shape[0]):
-            one_hotted = self.one_hot[x[value].item()]
-            output_tensor[value, :] = torch.Tensor(one_hotted)
-        return output_tensor
+        labels_encoded = torch.zeros(x.shape[0])
+
+        if self.cfg['model']['encoding'] == 'threshold':
+
+            if self.cfg['model']['structure'] == 'brixia_Lung':
+                th_0 = 1
+                th_1 = 4
+                th_2 = 7
+            elif self.cfg['model']['structure'] == 'brixia_Global':
+                th_0 = 4
+                th_1 = 9
+                th_2 = 14
+
+
+
+            for value in range(x.shape[0]):
+                if x[value] <= th_0:
+                    one_hotted = self.one_hot[0]
+                    encoded_label = 0
+                elif th_0 < x[value] <= th_1:
+                    one_hotted = self.one_hot[1]
+                    encoded_label = 1
+                elif th_1 < x[value] <= th_2:
+                    one_hotted = self.one_hot[2]
+                    encoded_label = 2
+                elif x[value] > th_2:
+                    one_hotted = self.one_hot[3]
+                    encoded_label = 3
+
+                labels_encoded[value] = encoded_label
+                output_tensor[value, :] = torch.Tensor(one_hotted)
+        elif self.cfg['model']['encoding'] == 'mean':
+            pass
+
+        return output_tensor, labels_encoded
 
     def forward(self, outputs, labels, **kwargs):
         # REMEMBER LABELS/OUTPUT ORDER = [A, B, C, D, E, F, RL, LL, G]
-        labels_areas = labels[:, :6]
-        outputs_areas = outputs[:, :]
+        if self.cfg['model']['structure'] == 'brixia_Lung':
+            labels_lungs_region = labels[:, 6:8]
+        elif self.cfg['model']['structure'] == 'brixia_Global':
+            labels_lungs_region = labels[:, -1]
+            labels_lungs_region = labels_lungs_region[:, None]
+        outputs_region = outputs
 
-        loss_total_BCE_categorical = 0
-        loss_total_regression = 0
+        labels_predicted = torch.zeros_like(labels_lungs_region)
+        probs_predicted = torch.zeros_like(labels_lungs_region)
+        labels_encoded = torch.zeros_like(labels_lungs_region)
 
-        labels_predicted = torch.zeros_like(labels_areas)
-        probs_predicted = torch.zeros_like(labels_areas)
+        for s_region in range(labels_lungs_region.shape[-1]):
+            one_hot_labels, encoded_labels = self.get_one_hot(labels_lungs_region[:, s_region], labels_complete=labels)
 
-        for s_area in range(labels_areas.shape[-1]):
+            one_hot_labels = one_hot_labels.to(outputs.device)
 
-            labels_score = labels_areas[:, s_area].to(outputs.device)
-            labels_encoded = self.get_one_hot(labels_areas[:, s_area]).to(outputs.device)
-            outputs_area = outputs_areas[:, s_area, :].to(outputs.device)
+            outputs_normalized = torch.softmax(outputs_region[:, s_region, :], dim=1)
 
-            loss_total_BCE_categorical += torch.mean(nn.BCEWithLogitsLoss(reduction="none")(outputs_area, labels_encoded).mean(dim=1))
-            out_S = nn.Softmax(dim=1)(outputs_area).to(outputs.device)
-            probs, label = torch.max(out_S, dim=1)
-            # add results:
-            labels_predicted[:, s_area] = label
-            probs_predicted[:, s_area] = probs
+            pred, max = torch.max(outputs_normalized, 1)
 
-            factors = torch.zeros_like(out_S)
-            for i in range(factors.shape[0]):
-                factors[i, :] = torch.Tensor([0, 1, 2, 3])
-            # Regression OUTPUT
-            output_regressed = torch.mul(out_S, factors.to(outputs.device)).sum(dim=1)
-            loss_total_regression += torch.mean(nn.L1Loss(reduction="none")(output_regressed.to(outputs.device), labels_score))
+            labels_predicted[:, s_region] = max
+            probs_predicted[:, s_region] = pred
+            labels_encoded[:, s_region] = encoded_labels
 
+            if s_region == 0:
+                LungLeft_loss = nn.CrossEntropyLoss()(outputs_region[:, s_region, :].to(outputs.device), one_hot_labels)
+            elif s_region == 1:
+                LungRight_loss = nn.CrossEntropyLoss()(outputs_region[:, s_region, :].to(outputs.device), one_hot_labels)
         # Total loss
-        total_loss = self.alpha * loss_total_BCE_categorical + (1 - self.alpha) * loss_total_regression
-        return {'total_loss': total_loss, 'labels_predicted': labels_predicted, 'probs_predicted': probs_predicted, 'regression_output': output_regressed}
+        if self.cfg['model']['structure'] == 'brixia_Lung':
+            total_loss = LungLeft_loss + LungRight_loss
+        elif self.cfg['model']['structure'] == 'brixia_Global':
+            total_loss = LungLeft_loss
+        return {'total_loss': total_loss, 'predicted_labels': labels_predicted, 'probabilities_predicted': probs_predicted, 'encoded_labels': labels_encoded}
+
 
 
 class IdentityMultiHeadLoss(torch.nn.Module):
@@ -1646,13 +1685,13 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         super(IdentityMultiHeadLoss, self).__init__()
         self.cfg = cfg
         self.regression = self.cfg.model.regression_type
-        self.balancing = self.cfg.curriculum.steps[self.cfg.curriculum.step_running] / 100 if self.cfg.trainer.curriculum else 0.5
         self.loss_1 = cfg.trainer.loss_1
         self.loss_2 = cfg.trainer.loss_2
         self.encode_dataset = {'AFC': 0, 'BX': 1}
-        self.dim_1 = 2
-        encode_bx_dim = {'area': 6, 'region': 3, 'global': 1, 'consistent': 24}
-        self.dim_2 = encode_bx_dim[self.regression]
+        self.dim_AFC_vector = 2
+        dimension_bx_type = {'brixia_Lung': 8, 'brixia_Global': 4, 'regression': 6}
+        encode_bx_dim = {'area': 6, 'region': 3, 'global': 1, 'consistent': dimension_bx_type[cfg['model']['structure']]}
+        self.dim_BX_vector = encode_bx_dim[self.regression]
 
     def get_brixia_mask(self, labels, dim=6):
         batch_dim = labels.shape[0]
@@ -1679,11 +1718,11 @@ class IdentityMultiHeadLoss(torch.nn.Module):
 
     def get_loss(self, name):
         if name.upper() == 'MSE':
-            return nn.MSELoss()
+            return nn.MSELoss(reduction='mean')
         elif name.upper() == 'BCE':
-            return nn.BCELoss()
+            return nn.BCELoss(reduction='mean')
         elif name.upper() == 'CE':
-            return nn.CrossEntropyLoss()
+            return nn.CrossEntropyLoss(reduction='sum')
         elif name.upper() == 'BRIXIA':
             return BrixiaCustomLoss(cfg=self.cfg)
         else:
@@ -1691,15 +1730,20 @@ class IdentityMultiHeadLoss(torch.nn.Module):
 
     def forward(self, outputs, labels, **kwargs):
 
-        labels = labels[:, :6]
+        labels = labels[:, :]
         labels_class = kwargs['dataset_class']
         # Create a new vector with the labels that link each sample to the corresponding dataset
         labels_class = torch.Tensor(self.encode_batch(labels_class)).to(labels.device)
-        BX_mask = self.get_brixia_mask(labels=labels_class, dim=self.dim_2).to(labels.device)
-        if self.cfg['model']['structure_bx'] == 'brixia':
-            BX_mask_output = BX_mask.view(BX_mask.shape[0], 6, 4)
-        AFC_mask = self.get_aiforcovid_mask(labels=labels_class, dim=self.dim_1).to(labels.device)
 
+        # Get the mask selector to compute the loss for the samples for each different dataset
+        AFC_mask = self.get_aiforcovid_mask(labels=labels_class, dim=self.dim_AFC_vector).to(labels.device)
+        BX_mask = self.get_brixia_mask(labels=labels_class, dim=self.dim_BX_vector).to(labels.device)
+
+        if self.cfg['model']['structure'] == 'brixia_Lung':
+            BX_mask_output = BX_mask.view(BX_mask.shape[0], 2, 4)
+        elif self.cfg['model']['structure'] == 'brixia_Global':
+            BX_mask_output = BX_mask.view(BX_mask.shape[0], 1, 4)
+        # Get the selector for the samples that are not masked
         BX_selector = ~torch.any(BX_mask == 0, dim=1)
         AFC_selector = ~torch.any(AFC_mask == 0, dim=1)
 
@@ -1708,13 +1752,18 @@ class IdentityMultiHeadLoss(torch.nn.Module):
         Loss_BX = self.get_loss(self.loss_2)
 
         # Calculate the loss for each head
-        loss_1 = Loss_AFC(outputs[0] * AFC_mask, labels[:, :self.dim_1] * AFC_mask)
+        loss_1 = Loss_AFC(outputs[0] * AFC_mask, labels[:, :self.dim_AFC_vector] * AFC_mask)
 
-        loss_2 = Loss_BX(outputs[1] * BX_mask_output, labels[:, :6] * BX_mask[:, :6])['total_loss'] if self.cfg['model']['structure_bx'] == 'brixia' else Loss_BX(outputs[1] * BX_mask,
-                                                                                                                                                                  labels[:, :6] * BX_mask)
-
+        mask_labels = self.get_brixia_mask(labels=labels_class, dim=9).to(labels.device)
+        if self.cfg['model']['structure'] == 'brixia_Lung':
+            loss_2 = Loss_BX(outputs[1] * BX_mask_output, labels * mask_labels)['total_loss']
+        elif self.cfg['model']['structure'] == 'brixia_Global':
+            mask_labels = self.get_brixia_mask(labels=labels_class, dim=9).to(labels.device)
+            loss_2 = Loss_BX(outputs[1] * BX_mask_output, labels * mask_labels)['total_loss']
+        else:
+            loss_2 = Loss_BX(outputs[1] * BX_mask, labels[:, :6] * mask_labels[:, :6])
         # Calculate the total loss
-        Loss_TOT = (1 - self.balancing) * loss_1 + self.balancing * loss_2
+        Loss_TOT = loss_1 + loss_2
         return {'Loss_TOT': Loss_TOT, 'Loss_M': loss_1, 'Loss_S': loss_2}, {'AFC_sel': AFC_selector, 'BX_sel': BX_selector}
 
 
@@ -1722,6 +1771,14 @@ def init_weights(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform(m.weight)
         m.bias.data.fill_(0.01)
+
+
+def add_noise_to_weights(m):
+    with torch.no_grad():
+        if hasattr(m, 'weight'):
+            device = m.weight.device
+            noise = torch.randn(m.weight.size(), device=device) * 0.03
+            m.weight.add_(noise)
 
 
 class ParallelMultiObjective(nn.Module):
@@ -1732,72 +1789,60 @@ class ParallelMultiObjective(nn.Module):
 
         self.cfg_morbidity = cfg['data']['modes']['morbidity']
         self.cfg_severity = cfg['data']['modes']['severity']
-
         self.classes_morbidity = self.cfg_morbidity['classes']
         self.classes_severity = self.cfg_severity['classes']
 
         self.labels = [*self.cfg_morbidity['classes'], *self.cfg_severity['classes']]
         self.class_to_id = {c: i for i, c in enumerate(self.labels)}
         # BACKBONE
-        self.softmax = nn.Softmax(dim=1)
         self.backbone, self.in_features = get_backbone(backbone)
         self.drop_rate = self.config['model']['dropout_rate']
         self.train_backbone = self.config['model']['train_backbone']
 
         # HEAD CLASSIFICATION : MORBIDITY
-        # HEAD CLASSIFICATION : MORBIDITY
 
-        if cfg['model']['structure_bx'] == 'brixia':
-            self.global_ = nn.Sequential(OrderedDict(
-                [('dropout_global', nn.Dropout(p=0.5, inplace=False)),
-                 ('relu_global', nn.ReLU()),
-                 ('linear_global', nn.Linear(in_features=self.in_features, out_features=128))]))
-            self.area_A_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_A', nn.ReLU()),
-                    ('area_A',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_B_output = nn.Sequential(OrderedDict(
-                [('ReLU_B', nn.ReLU()),
-                 ('area_B',
-                  nn.Linear(in_features=128, out_features=4))]))
-            self.area_C_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_C', nn.ReLU()),
-                    ('area_C',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_D_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_D', nn.ReLU()),
-                    ('area_D',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_E_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_E', nn.ReLU()),
-                    ('area_E',
-                     nn.Linear(in_features=128, out_features=4))]))
-            self.area_F_output = nn.Sequential(OrderedDict(
-                [
-                    ('ReLU_F', nn.ReLU()),
-                    ('area_F',
-                     nn.Linear(in_features=128, out_features=4))]))
+        if cfg['model']['structure'] == 'brixia_Lung':
+            # HEAD LUNGS CLASSIFIER
 
+            self.area_LungLeft_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_L', nn.ReLU()),
+                    ('drop_L', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_L',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+            self.area_LungRight_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_R', nn.ReLU()),
+                    ('drop_R', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_R',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+
+            change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
             for i, param in enumerate(list(self.backbone.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_A_output.parameters())):
+            for i, param in enumerate(list(self.area_LungLeft_output.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_B_output.parameters())):
+            for i, param in enumerate(list(self.area_LungRight_output.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_C_output.parameters())):
+        elif cfg['model']['structure'] == 'brixia_Global':
+            # HEAD GLOBAL CLASSIFIER
+
+            self.area_Global_output = nn.Sequential(OrderedDict(
+                [
+                    ('ReLU_G', nn.ReLU()),
+                    ('drop_G', nn.Dropout(p=0.5, inplace=False)),
+                    ('Lung_G',
+                     nn.Linear(in_features=self.in_features, out_features=4))
+                ]))
+
+            change_head(model=self.backbone, model_name=backbone, new_head=nn.Identity())
+            for i, param in enumerate(list(self.backbone.parameters())):
                 param.requires_grad = True
-            for i, param in enumerate(list(self.area_D_output.parameters())):
-                param.requires_grad = True
-            for i, param in enumerate(list(self.area_E_output.parameters())):
-                param.requires_grad = True
-            for i, param in enumerate(list(self.area_F_output.parameters())):
+            for i, param in enumerate(list(self.area_Global_output.parameters())):
                 param.requires_grad = True
         else:
-            print('HEAD CLASSIFICATION :', self.config['model']['head'])
 
             self.Head_Severity = nn.Sequential(
                 OrderedDict([
@@ -1836,6 +1881,7 @@ class ParallelMultiObjective(nn.Module):
         for i, param in enumerate(list(self.backbone.parameters())):
             param.requires_grad = self.train_backbone
 
+
     def load_backbone_average_weights(self, morbidity_params, severity_params, Beta=0.):
         """
         This function load the mean weights of the two models, and fuse them together with an adaptive mean. If Beta == 0, the weights
@@ -1846,7 +1892,7 @@ class ParallelMultiObjective(nn.Module):
         :param Beta: Beta parameter for the weighted mean
         :return: None
         """
-        # TODO Adapt this one ?
+
         print('LOADING BACKBONE WEIGHTS (1/2 * S + 1/2 * M)')
         this_model_params = dict(self.named_parameters())
         for (name_m, param_morbidity), (name_s, param_severity) in zip(morbidity_params.items(), severity_params.items()):
@@ -1862,29 +1908,29 @@ class ParallelMultiObjective(nn.Module):
 
     def forward(self, x):
         x_hat = self.backbone(x)
-        if self.config['model']['structure_bx'] == 'brixia':
-            # Areas and Global scorer
-            out_global_memory = self.global_(x_hat)
-            out_area_A = self.area_A_output(out_global_memory)[:, None, :]
-            out_area_B = self.area_B_output(out_global_memory)[:, None, :]
-            out_area_C = self.area_C_output(out_global_memory)[:, None, :]
-            out_area_D = self.area_D_output(out_global_memory)[:, None, :]
-            out_area_E = self.area_E_output(out_global_memory)[:, None, :]
-            out_area_F = self.area_F_output(out_global_memory)[:, None, :]
-            out_severity = torch.cat((out_area_A, out_area_B, out_area_C, out_area_D, out_area_E, out_area_F), dim=1)
+        if self.config['model']['structure'] == 'brixia_Lung':
+            # Areas
+            out_global_memory = self.backbone(x)
+            out_area_LL = self.area_LungLeft_output(out_global_memory)[:, None, :]
+            out_area_RL = self.area_LungRight_output(out_global_memory)[:, None, :]
+            out_severity = torch.cat((out_area_LL, out_area_RL), dim=1)
+        elif self.config['model']['structure'] == 'brixia_Global':
+            out_global_memory = self.backbone(x)
+            out_area_global = self.area_Global_output(out_global_memory)[:, None, :]
+            out_severity = out_area_global
         else:
             out_severity = self.Head_Severity(x_hat)
-        out_morbidity = self.softmax(self.Head_Morbidity(x_hat))
-
+        out_morbidity = self.Head_Morbidity(x_hat)
         return out_morbidity, out_severity
 
-
-class SerialMultiObjective(nn.Module):
+"""
+    class SerialMultiObjective(nn.Module):
 
     def __init__(self, cfg=None, backbone='resnet18', device=None, *args, **kwargs):
         super(SerialMultiObjective, self).__init__()
         self.config = cfg
         self.device = device
+
 
         self.cfg_morbidity = cfg['data']['modes']['morbidity']
         self.cfg_severity = cfg['data']['modes']['severity']
@@ -1901,7 +1947,7 @@ class SerialMultiObjective(nn.Module):
 
         # HEAD CLASSIFICATION : MORBIDITY
         print('HEAD CLASSIFICATION :', self.config['model']['head'])
-        input_features = 24 if cfg['model']['structure_bx'] == 'brixia' else len(self.classes_severity)
+        input_features = 24 if cfg['model']['structure'] == 'brixia' else len(self.classes_severity)
         self.Head_Morbidity = nn.Sequential(
             OrderedDict([
                 ('M_linear0', nn.Linear(in_features=input_features, out_features=32, bias=True)),
@@ -1913,7 +1959,7 @@ class SerialMultiObjective(nn.Module):
                 ('M_classification-Head', nn.Linear(in_features=64, out_features=len(self.classes_morbidity), bias=True))
             ]))
         init_weights(self.Head_Morbidity)
-        if cfg['model']['structure_bx'] == 'brixia':
+        if cfg['model']['structure'] == 'brixia':
             self.global_ = nn.Sequential(OrderedDict(
                 [('dropout_global', nn.Dropout(p=0.5, inplace=False)),
                  ('relu_global', nn.ReLU()),
@@ -1987,7 +2033,7 @@ class SerialMultiObjective(nn.Module):
             param.requires_grad = True
 
     def load_backbone_average_weights(self, morbidity_params, severity_params, Beta=0.):
-        """
+
         This function load the mean weights of the two models, and fuse them together with an adaptive mean. If Beta == 0, the weights
         loaded in the model are coming from only the severity model, if Beta == 1, the weights loaded in the model are coming from only the morbidity model.
 
@@ -1995,7 +2041,7 @@ class SerialMultiObjective(nn.Module):
         :param severity_params: Severity model parameters
         :param Beta: Beta parameter for the weighted mean
         :return: None
-        """
+
         # TODO Adapt this one ?
         print('LOADING BACKBONE WEIGHTS (1/2 * S + 1/2 * M)')
         this_model_params = dict(self.named_parameters())
@@ -2012,7 +2058,7 @@ class SerialMultiObjective(nn.Module):
 
     def forward(self, x):
         x_hat = self.backbone(x)
-        if self.config['model']['structure_bx'] == 'brixia':
+        if self.config['model']['structure'] == 'brixia':
             # Areas and Global scorer
             out_global_memory = self.global_(x_hat)
             out_area_A = self.area_A_output(out_global_memory)[:, None, :]
@@ -2028,3 +2074,4 @@ class SerialMultiObjective(nn.Module):
             out_severity = self.Head_Severity(x_hat)
             out_morbidity = self.softmax(self.Head_Morbidity(out_severity))
         return out_morbidity, out_severity
+    """

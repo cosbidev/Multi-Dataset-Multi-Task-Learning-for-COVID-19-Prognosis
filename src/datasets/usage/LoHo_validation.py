@@ -9,9 +9,8 @@ import os
 from tqdm import tqdm
 import random
 import pandas as pd
-from itertools import chain
 import argparse
-from src import rotate, mkdir, chunks
+from src import mkdir, chunks
 
 """
 sys.argv.extend(
@@ -29,7 +28,7 @@ sys.argv.extend(
 sys.argv.extend(
     [
         '-o', 'data/processed',
-        '-i', 'data/AIforCOVID/processed/box_data_AXF123.xlsx',
+        '-i', 'data/AIforCOVID/processed/box_data_AXF1.xlsx',
         '-d', 'AFC',
         '-m', 'data/AIforCOVID',
         '-cv', '99',
@@ -62,7 +61,7 @@ def ValidationCreation():
     print()
     data_file = args.input_data
     dataset_name = args.dataset_name
-    dest_dir = os.path.join(args.output_dir, dataset_name)
+    dest_dir = os.path.join(args.output_dir, dataset_name + '_1R')
     cv = args.fold
 
     db = pd.read_excel(data_file, header=0, index_col="img")
@@ -78,7 +77,6 @@ def ValidationCreation():
         db[label_col] = classes
         classes, classes_counts = np.unique(classes, return_counts=True)
     elif dataset_name == "AFC":
-        classes, classes_counts = np.unique(db[label_col], return_counts=True)
         pass
 
 
@@ -134,17 +132,15 @@ def ValidationCreation():
     elif dataset_name == 'AFC':
         base_data_folder = args.metadata
         path_to_data_1 = os.path.join(base_data_folder, 'imgs')
-        path_to_data_2 = os.path.join(base_data_folder, 'imgs_r2')
-        path_to_data_3 = os.path.join(base_data_folder, 'imgs_r3')
+        #path_to_data_2 = os.path.join(base_data_folder, 'imgs_r2')
         # CLINICAL DATA
         meta_path = os.path.join(base_data_folder, 'AIforCOVID.xlsx')
-        meta_path_2 = os.path.join(base_data_folder, 'AIforCOVID_r2.xlsx')
-        meta_path_3 = os.path.join(base_data_folder, 'AIforCOVID_r3.xlsx')
+        #meta_path_2 = os.path.join(base_data_folder, 'AIforCOVID_r2.xlsx')
         # Clinical Data:
         clinical_meta_ = pd.read_excel(meta_path)
-        clinical_meta_2 = pd.read_excel(meta_path_2)
-        clinical_meta_3 = pd.read_excel(meta_path_3)
-        clinical_meta_global = pd.concat([clinical_meta_, clinical_meta_2, clinical_meta_3])
+        #clinical_meta_2 = pd.read_excel(meta_path_2)
+        #clinical_meta_global = pd.concat([clinical_meta_, clinical_meta_2])
+        clinical_meta_global = clinical_meta_
         print('Clinical metadata loaded AFC')
         clinical_meta_global.set_index('ImageFile', inplace=True)
         Centers = clinical_meta_global['Hospital'].str.upper().unique()
@@ -261,7 +257,9 @@ def ValidationCreation():
             fold_train = list(patient_class_center_minus_1)
             if len(fold_train) != cv:
                 del fold_train[-1]
+
             for j in range(div):
+
                 if j == c_c:
                     folds_train_val[j] = folds_train_val[j] + fold_train
 

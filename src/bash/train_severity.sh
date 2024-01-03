@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -A NAISS2023-5-274  -p alvis
+#SBATCH -A NAISS2023-5-493   -p alvis
 #SBATCH -N 1 --gpus-per-node=A40:1
 #SBATCH -t 0-10:00:00
 # Output files
@@ -16,7 +16,6 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 source bin/activate
 
 
-
 # Load modules
 #module purge
 #module load CUDA/11.3.1
@@ -31,10 +30,10 @@ cd /mimer/NOBACKUP/groups/snic2022-5-277/fruffini/ItaChinaCOVID19/ProgettoAnno1/
 config=$config_dir
 model=$model_name
 id_exp=$id_exp
-
+structure=$structure
 checkpoint=$checkpoint
 #!/usr/bin/bash
 # Train HERE YOU RUN YOUR PROGRAM
-python src/models/train_severity_SingleTask.py --model_name ${model} --cfg_file=${config} --id_exp=${id_exp} $checkpoint
+python src/models/train_severity_SingleTask.py --model_name ${model} --cfg_file ${config} --structure ${structure} --id_exp=${id_exp} $checkpoint
 # Deactivate venv
 deactivate

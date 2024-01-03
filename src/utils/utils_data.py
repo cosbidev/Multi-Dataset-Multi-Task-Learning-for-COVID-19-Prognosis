@@ -1,5 +1,8 @@
 import os
 import random
+import warnings
+from multiprocessing.pool import ThreadPool
+
 import cv2
 import imutils
 import numpy as np
@@ -11,11 +14,10 @@ from PIL import Image
 from scipy.ndimage import shift
 from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.interpolation import map_coordinates
-from torch.utils.data import IterableDataset, DataLoader, Sampler
+from torch.utils.data import IterableDataset, Sampler
 from tqdm import tqdm
-
 from .utils_images import get_box, get_mask, normalize, find_bboxes
-from .utils_visualization import plot_bbox_on_image
+
 
 
 def create_combined_folds(cv_option, morbidity_cfg, severity_cfg, steps=None):
@@ -173,7 +175,7 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-class XRayCenterCrop(object):
+"""class XRayCenterCrop(object):
 
     def crop_center(self, img):
         _, y, x = img.shape
@@ -183,7 +185,7 @@ class XRayCenterCrop(object):
         return img[:, starty:starty + crop_size, startx:startx + crop_size]
 
     def __call__(self, img):
-        return self.crop_center(img)
+        return self.crop_center(img)"""
 
 
 def normalize_XRay(img, means=[0.485, 0.456, 0.406], stds=[0.229, 0.224, 0.225]):
@@ -280,30 +282,30 @@ def get_mean_std(loader):
 def augmentation(img):
     # shift
     r = random.randint(0, 100)
-    if r > 70:
+    if r > 50:
         shift_perc = 0.1
         r1 = random.randint(-int(shift_perc * img.shape[0]), int(shift_perc * img.shape[0]))
         r2 = random.randint(-int(shift_perc * img.shape[1]), int(shift_perc * img.shape[1]))
         img = shift(img, [r1, r2], mode='nearest')
     # zoom
     r = random.randint(0, 100)
-    if r > 70:
+    if r > 50:
         zoom_perc = 0.1
         zoom_factor = random.uniform(1 - zoom_perc, 1 + zoom_perc)
         img = clipped_zoom(img, zoom_factor=zoom_factor)
     # flip
     r = random.randint(0, 100)
-    if r > 70:
+    if r > 50:
         img = cv2.flip(img, 1)
     # rotation
     r = random.randint(0, 100)
-    if r > 70:
+    if r > 50:
         max_angle = 10
         r = random.randint(-max_angle, max_angle)
         img = imutils.rotate(img, r)
     # elastic deformation
     r = random.randint(0, 100)
-    if r > 70:
+    if r > 50:
         img = elastic_transform(img, alpha_range=[20, 40], sigma=7)
     return img
 
@@ -337,12 +339,13 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
     # [MASKED IMAGE] calculate max and min on lung and clip the image
     masked_image = get_mask(img, mask)
     masked_image = np.where(masked_image != 0.0, masked_image, masked_image.mean())
+
     lower, upper = np.percentile(masked_image.flatten(), [2, 98])
     masked_image = np.clip(masked_image, lower, upper)
     min_val_lung, max_val_lung = masked_image.min(), masked_image.max()
     # Min max
 
-    img = np.where(img != 0.0, img, img.mean())
+    # img = np.where(img != 0.0, img, img.mean())
     lower_img, upper_img = np.percentile(img.flatten(), [2, 98])
     img = np.clip(img, lower_img, upper_img)
     min_val, max_val = img.min(), img.max()
@@ -352,6 +355,7 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
         img = get_mask(img, mask)
         min_val, max_val = img.min(), img.max()
 
+
     if kwargs['normalization_mode'] == 'MinMax':
         img = normalize(img, min_val=min_val, max_val=max_val)
     if bbox_resize:
@@ -360,12 +364,12 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
             img = get_box(img=img, box_=box_tot, masked=masked, **kwargs)
         except IndexError:
             img = img
+
     # To Grayscale
     if img.ndim > 2:
         img = img.mean(axis=2)
 
     # Resize
-
 
     img = cv2.resize(img, (img_dim, img_dim))
 
@@ -383,11 +387,29 @@ def loader(img_path, img_dim, masked=False, mask_path=None, bbox_resize=False, s
 class CustomSampler(Sampler):
     def __init__(self, dataset1, dataset2, ratio, batch_size):
 
+        # Datasets loading:
+        # dataset1: dataset with more samples guiding the sampling
+        # dataset2: to fill the remaining samples
+        # Once the first dataset has been iterated the sampler job is completed
         self.dataset1 = dataset1
         self.dataset2 = dataset2
-        self.ratio_d1 = ratio
+        # Length of the dataset
+        self.len_dataset1 = len(dataset1)
+        self.len_dataset2 = len(dataset2)
 
+
+        # Ratio first dataset
+        self.ratio_d1 = ratio
+        # Batch size
         self.batch_size = batch_size
+
+        # Given dataset1 length
+        self.max_batches = self.len_dataset1 // int(batch_size * ratio)
+        self.max_batches = int(self.max_batches)
+        # Indices
+        self.indices1 = np.arange(len(dataset1))
+        self.indices2 = np.arange(len(dataset2)) + len(dataset1) # To avoid overlapping indices
+
 
         self.num_samples_dataset1 = int(batch_size * self.ratio_d1)
         self.num_samples_dataset2 = batch_size - self.num_samples_dataset1
@@ -400,8 +422,6 @@ class CustomSampler(Sampler):
 
         self.current_idx1 = 0
         self.current_idx2 = 0
-
-        self.max_batches = (len(dataset1) + len(dataset2)) // batch_size
     def __iter__(self):
         batch = []
         batch_count = 0
@@ -450,8 +470,7 @@ class CustomIterableDataset(torch.utils.data.Dataset):
 
 
 class BaseDataset(torch.utils.data.Dataset):
-
-    def __init__(self, cfg, step):
+    def __init__(self, cfg, step, loading_cache=True, cache_prop=1, **kwargs):
         self.normalize_strategy = None
         self.img_dim = None
         self.cfg = cfg
@@ -462,9 +481,36 @@ class BaseDataset(torch.utils.data.Dataset):
         self.masks = {}
         self.boxes = {}
         self.img_paths = {}
+        self.loading_cache = loading_cache
+        self.cache_prop = cache_prop
 
     def set_normalize_strategy(self, normalize_strategy):
         self.normalize_strategy = normalize_strategy
+
+
+    def _load_cache_item(self, idx: int):
+        """
+        Args:
+            idx: the index of the input data sequence.
+        """
+        row = self.data.iloc[idx]
+        # Map each element using the line_mapper
+        id_ = str(row.img)
+
+        if self.loading_cache:
+            if self.cache_prop == 1:
+
+                x = self.load_single_image(id_)
+            else:
+                if random.random() < self.cache_prop:
+                    x = self.load_single_image(id_)
+                else:
+                    return {str(id_): 'NOT_LOADED'}
+            return {str(id_): x}
+        else:
+            return {str(id_): 'NOT_LOADED'}
+
+
 
     def load_single_image(self, id_):
         id_ = str(id_)
@@ -482,14 +528,20 @@ class BaseDataset(torch.utils.data.Dataset):
         x = self.loader(img_path=img_path, img_dim=self.img_dim, mask_path=mask_path, box=box, step=self.step, normalization_mode = self.normalize_strategy, **self.cfg['preprocess'])
         return x
 
-    def load_images(self):
-        c = CustomIterableDataset(self.data, self)
-        loader_ = torch.utils.data.DataLoader(c, batch_size=32, num_workers=6)
-        for output in tqdm(loader_):
-            ids = output[0]
-            x = output[1]
-            for id, img in zip(ids, x):
-                self.images[id] = img.cpu().numpy()
+    def load_images(self, progress=True, has_tqdm=True, num_workers=12, cache_loadings=False):
+
+        indices = self.data.index.tolist()
+
+        if progress and not has_tqdm:
+            warnings.warn("tqdm is not installed, will not show the caching progress bar.")
+        with ThreadPool(num_workers) as p:
+            if progress and has_tqdm:
+                return list(tqdm(p.imap(self._load_cache_item, indices), total=len(indices), desc="Loading dataset"))
+            return list(p.imap(self._load_cache_item, indices))
+
+
+
+
 
     def shuffle(self):
         self.data = self.data.sample(frac=1).reset_index(drop=True)
@@ -512,33 +564,45 @@ class BaseDataset(torch.utils.data.Dataset):
         # Select sample
         row = self.data.iloc[index]
         Id_ = str(row.img)
+        # Load data and get label
+        if self.loading_cache:
 
-        x = self.images[str(Id_)] if not self.normalize_strategy == 'MinMax' else normalize(self.images[str(Id_)], min_val=self.images[str(Id_)].min(), max_val=self.images[str(
-            Id_)].max())
+            if not isinstance(self.images[str(Id_)], str):
+                image = self.images[str(Id_)]
+            else:
+                image = self.load_single_image(Id_)
+                self.images.update({str(Id_): image})
+        else:
+            image = self.load_single_image(Id_)
+            self.images.update({str(Id_): image})
+
+
+        image = image if not self.normalize_strategy == 'MinMax' else normalize(image, min_val=image.min(), max_val=image.max())
         # Augmentation
+
         if self.step == "train":
-            x = augmentation(x)
+            image = augmentation(image)
 
         # 3 channels
-        x = np.stack((x,) * 3, axis=2)
+        image = np.stack((image,) * 3, axis=2)
 
         y = row.label if 'scores' not in row.index else None  # label
         # Get label
         class_dataset = row.dataset_class if 'dataset_class' in row.index else None
         y = self.get_label(y=y, Id_=Id_, class_dataset=class_dataset)
         # Normalize
-        x = normalize_XRay(torch.Tensor(x.reshape(3, self.img_dim, self.img_dim))) if self.normalize_strategy == 'Imagenet' else torch.Tensor(x.reshape(
-            3, self.img_dim, self.img_dim))
+        image = normalize_XRay(torch.Tensor(image.reshape(3, self.img_dim, self.img_dim))) \
+            if self.normalize_strategy == 'Imagenet' else torch.Tensor(image.reshape(3, self.img_dim, self.img_dim))
         if 'dataset_class' not in row.index:
-            return x, y, Id_, 'NO_CLASS'
+            return image, y, Id_, 'NO_CLASS'
         else:
-            return x, y, Id_, class_dataset
+            return image, y, Id_, class_dataset
 
 
 class DatasetImgAFC(BaseDataset):
     'Characterizes a dataset for PyTorch Dataloader to trait images'
 
-    def __init__(self, data, classes, cfg, step, one_hot=True, load=True):
+    def __init__(self, data, classes, cfg, step, one_hot=True, load=True, **kwargs):
         """
         Initialization super class and specific attributes for the specific dataset.
         Args:
@@ -548,7 +612,7 @@ class DatasetImgAFC(BaseDataset):
             step: step of the pipeline (train, valid, test)
             one_hot: if True, the label is converted to one hot encoding
             """
-        BaseDataset.__init__(self, cfg, step)
+        BaseDataset.__init__(self, cfg, step, **kwargs)
 
         # Specific Attributes for the specific dataset
         self.m_idx_to_class = None
@@ -569,7 +633,11 @@ class DatasetImgAFC(BaseDataset):
             self.shuffle()
             # Processing and Loading of images in memory
 
-            self.load_images()
+            self.images = {}
+
+            for single_dict in self.load_images():
+                self.images.update(single_dict)
+
 
 
     def process_morbidity(self, cfg, data, classes):
@@ -654,6 +722,7 @@ class DatasetImageCXR(torch.utils.data.Dataset):
             box_tot, _, _ = find_bboxes(mask)
             img = get_box(img=img, box_=box_tot, masked=False)
 
+
         img = np.where(img != 0.0, img, img.mean())
         img = np.where(img < 64000, img, img.mean())
         img = np.clip(img, 1500, img.max())
@@ -675,9 +744,9 @@ class DatasetImageCXR(torch.utils.data.Dataset):
 class DatasetImgBX(BaseDataset):
     'Characterizes a dataset for PyTorch Dataloader to trait images'
 
-    def __init__(self, data, classes, cfg, step, load=True):
+    def __init__(self, data, classes, cfg, step, load=True, **kwargs):
         'Initialization'
-        BaseDataset.__init__(self, cfg, step)
+        BaseDataset.__init__(self, cfg, step, **kwargs)
 
 
 
@@ -697,7 +766,10 @@ class DatasetImgBX(BaseDataset):
             self.data, self.brixia_score, self.masks, self.boxes, self.box_R, self.box_L, self.img_paths = self.process_severity(self.cfg, data, classes)
             self.shuffle()
             # Processing and Loading of images in memory
-            self.load_images()
+
+            self.images = {}
+            for single_dict in self.load_images():
+                self.images.update(single_dict)
 
     def process_severity(self, cfg, data, classes):
         self.drop_patient(patient_ids=['1773596264454332092'], data=data)
@@ -759,10 +831,9 @@ class DatasetImgBX(BaseDataset):
 
         return torch.Tensor(self.brixia_score.loc[Id_].array)
 
-
 class MultiTaskDataset(DatasetImgBX, DatasetImgAFC):
 
-    def __init__(self, data, cfg_morbidity, cfg_severity, step, cfg, one_hot=True):
+    def __init__(self, data, cfg_morbidity, cfg_severity, step, cfg, one_hot=True, cache_prop=1):
         """
 
         :param data:
@@ -822,7 +893,12 @@ class MultiTaskDataset(DatasetImgBX, DatasetImgAFC):
         self.box_R = {**self.__m_box_R, **self.__s_box_R}
         self.box_L = {**self.__m_box_L, **self.__s_box_L}
         self.img_paths = {**self.__m_img_paths, **self.__s_img_paths}
-        self.load_images()
+
+        self.cache_prop = cache_prop
+        self.images = {}
+
+        for single_dict in self.load_images():
+            self.images.update(single_dict)
 
     def load_single_image(self, id_):
         id_ = str(id_)

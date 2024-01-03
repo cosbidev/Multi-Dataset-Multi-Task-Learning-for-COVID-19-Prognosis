@@ -3,11 +3,25 @@
     "config_file" : "parallel_config_multitask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['densenet161', 'densenet201']"},
+    "models": "diff",
+    "structure": "brixia_Lung",
+    "release": 1
+  },
   {
-    "config_file" : "parallel_config_multitask_Masked_cv5.yaml",
+    "config_file" : "parallel_config_multitask_cv5.yaml",
     "name" : "cv5",
     "fold" : 5,
-    "models": "['wide_resnet50_2', 'densenet161', 'densenet169', 'resnet50_ImageNet_ChexPert' 'resnext50_32x4d', 'densenet201', 'resnet101', 'shufflenet_v2_x1_0' , 'shufflenet_v2_x0_5']"
+    "models": "diff",
+    "structure": "brixia_Global",
+    "release": 1
+  },
+    {
+    "config_file" : "parallel_config_multitask_cv5.yaml",
+    "name" : "cv5",
+    "fold" : 5,
+    "models": "diff",
+    "structure": "regression",
+    "release": 1
   }
 ]
+

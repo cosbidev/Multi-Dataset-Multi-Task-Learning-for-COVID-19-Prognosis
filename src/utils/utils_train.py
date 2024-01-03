@@ -7,6 +7,8 @@ def update_learning_rate(lr_scheduler, optimizer, metric):
     print('optimizer: %.7s  --learning rate %.7f -> %.7f' % (
     optimizer.__class__.__name__, old_lr, lr) if not old_lr == lr else 'Learning rate non modificato: %s' % (
         old_lr))
+
+
 class EarlyStopping():
     """
     Early stopping to stop the training when the loss does not improve after
